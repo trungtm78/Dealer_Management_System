@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const contracts = await prisma.contract.findMany({
       where,
       include: {
-        customer: {
+        Customer: {
           select: {
             id: true,
             name: true,
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
             email: true
           }
         },
-        quotation: {
+        Quotation: {
           select: {
             id: true,
             quote_number: true,
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
             total_price: true
           }
         },
-        createdBy: {
+        User: {
           select: {
             id: true,
             name: true,
@@ -58,9 +58,34 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { quotation_id, customer_id, vin_id, total_amount, deposit_amount, payment_method, contract_date, delivery_date, created_by_id } = body
 
+    const contractDate = new Date(contract_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (contractDate < today) {
+      return NextResponse.json(
+        { error: 'Ngày hợp đồng không thể nhỏ hơn ngày hiện tại' },
+        { status: 400 }
+      )
+    }
+
+    if (total_amount <= 0) {
+      return NextResponse.json(
+        { error: 'Tổng số tiền hợp đồng phải lớn hơn 0' },
+        { status: 400 }
+      )
+    }
+
+    if (deposit_amount < 0 || deposit_amount > total_amount) {
+      return NextResponse.json(
+        { error: 'Số tiền đặt cọc phải từ 0 đến tổng số tiền hợp đồng' },
+        { status: 400 }
+      )
+    }
+
     const year = new Date().getFullYear()
     const contractNumber = `CON-${year}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`
-    
+
     const contract = await prisma.contract.create({
       data: {
         contract_number: contractNumber,
@@ -71,13 +96,13 @@ export async function POST(request: NextRequest) {
         deposit_amount,
         remaining_amount: total_amount - deposit_amount,
         payment_method,
-        contract_date: new Date(contract_date),
+        contract_date: contractDate,
         delivery_date: delivery_date ? new Date(delivery_date) : null,
         created_by_id,
         status: 'ACTIVE'
       },
       include: {
-        customer: {
+        Customer: {
           select: {
             id: true,
             name: true,
@@ -85,7 +110,7 @@ export async function POST(request: NextRequest) {
             email: true
           }
         },
-        quotation: {
+        Quotation: {
           select: {
             id: true,
             quote_number: true,
@@ -95,7 +120,7 @@ export async function POST(request: NextRequest) {
             total_price: true
           }
         },
-        createdBy: {
+        User: {
           select: {
             id: true,
             name: true,

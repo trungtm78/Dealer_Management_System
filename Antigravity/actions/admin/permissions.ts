@@ -55,19 +55,35 @@ export async function getRoleWithPermissions(roleId: string): Promise<RoleDTO | 
 
 export async function createRole(data: { name: string, description?: string, permissionIds: string[] }) {
   try {
+    if (!data.name || !data.name.trim()) {
+      return { success: false, error: 'Tên vai trò là bắt buộc' };
+    }
+
+    const validPermissionLevels = ['ADMIN', 'SALES', 'SERVICE', 'FINANCE', 'MANAGER'];
+    if (validPermissionLevels.includes(data.name)) {
+      return { success: false, error: 'Không thể tạo vai trò hệ thống. Các vai trò hệ thống: ADMIN, SALES, SERVICE, FINANCE, MANAGER' };
+    }
+
+    const existingRole = await prisma.role.findFirst({
+      where: { name: data.name }
+    });
+    if (existingRole) {
+      return { success: false, error: 'Tên vai trò đã tồn tại trong hệ thống' };
+    }
+
     const id = `role-${Date.now()}`;
     await prisma.$executeRawUnsafe(`
       INSERT INTO roles (id, name, description, is_system) 
       VALUES (?, ?, ?, ?)
-    `, id, data.name, data.description || null, 0);
-    
+    `, id, data.name.trim(), data.description?.trim() || null, 0);
+
     for (const pId of data.permissionIds) {
       await prisma.$executeRawUnsafe(`
         INSERT INTO role_permissions (role_id, permission_id) 
         VALUES (?, ?)
       `, id, pId);
     }
-    
+
     revalidatePath("/admin/permissions");
     return { success: true };
   } catch (error: any) {
