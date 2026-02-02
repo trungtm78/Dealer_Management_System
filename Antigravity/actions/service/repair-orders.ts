@@ -76,6 +76,15 @@ export async function createRepairOrder(data: CreateRepairOrderInput) {
         if (!roNumber || !roNumber.trim()) {
             throw new Error('RO Number is required');
         }
+        if (!data.customerId) {
+            throw new Error('Customer is required');
+        }
+        if (!data.vehicleInfo) {
+            throw new Error('Vehicle information is required');
+        }
+        if (!data.symptoms || !data.symptoms.trim()) {
+            throw new Error('Customer complaints are required');
+        }
 
         const newRO = await prisma.repairOrder.create({
             data: {
@@ -105,6 +114,31 @@ export async function createRepairOrder(data: CreateRepairOrderInput) {
  */
 export async function updateRepairOrder(id: string, data: UpdateRepairOrderInput) {
     try {
+        const currentRO = await prisma.repairOrder.findUnique({
+            where: { id }
+        });
+        if (!currentRO) {
+            throw new Error('Repair Order not found');
+        }
+
+        if (data.status && data.status !== currentRO.status) {
+            const validTransitions: Record<string, string[]> = {
+                'PENDING': ['DIAGNOSING', 'IN_PROGRESS', 'CANCELLED'],
+                'DIAGNOSING': ['WAITING_PARTS', 'IN_PROGRESS', 'CANCELLED'],
+                'WAITING_PARTS': ['IN_PROGRESS', 'CANCELLED'],
+                'IN_PROGRESS': ['QUALITY_CHECK', 'COMPLETED', 'CANCELLED'],
+                'QUALITY_CHECK': ['COMPLETED', 'IN_PROGRESS', 'CANCELLED'],
+                'COMPLETED': ['DELIVERED'],
+                'DELIVERED': [],
+                'CANCELLED': []
+            };
+
+            const allowedStatuses = validTransitions[currentRO.status] || [];
+            if (!allowedStatuses.includes(data.status)) {
+                throw new Error(`Không thể chuyển từ trạng thái ${currentRO.status} sang ${data.status}. Các trạng thái hợp lệ: ${allowedStatuses.join(', ')}`);
+            }
+        }
+
         const updated = await prisma.repairOrder.update({
             where: { id },
             data: {

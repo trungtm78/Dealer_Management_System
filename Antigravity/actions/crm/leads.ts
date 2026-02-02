@@ -21,7 +21,7 @@ export async function getLeads(): Promise<LeadDTO[]> {
         const leads = await prisma.lead.findMany({
             orderBy: { created_at: 'desc' },
             include: {
-                interactions: {
+                Interaction: {
                     orderBy: { created_at: 'desc' }
                 }
             }
@@ -36,7 +36,7 @@ export async function getLeads(): Promise<LeadDTO[]> {
             updated_at: l.updated_at.toISOString(),
             // Friendly string for UI display
             time_created: l.created_at.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
-            interactions: l.interactions.map((i: any) => ({
+            interactions: l.Interaction.map((i: any) => ({
                 ...i,
                 created_at: i.created_at.toISOString(),
             }))
@@ -52,13 +52,46 @@ export async function getLeads(): Promise<LeadDTO[]> {
  */
 export async function createLead(data: CreateLeadInput) {
     try {
+        if (!data.name || !data.name.trim()) {
+            return { success: false, error: 'Tên khách hàng là bắt buộc' };
+        }
+        if (!data.phone || !data.phone.trim()) {
+            return { success: false, error: 'Số điện thoại là bắt buộc' };
+        }
+
+        const validSources = ['FACEBOOK', 'WEBSITE', 'WALK_IN', 'HOTLINE', 'REFERRAL', 'OTHER'];
+        if (!data.source || !validSources.includes(data.source)) {
+            return {
+                success: false,
+                error: `Nguồn khách hàng không hợp lệ. Các giá trị hợp lệ: ${validSources.join(', ')}`
+            };
+        }
+
+        if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
+            return { success: false, error: 'Email không đúng định dạng' };
+        }
+
+        if (data.budget) {
+            const budgetValue = parseFloat(data.budget.toString().replace(/,/g, ''));
+            if (isNaN(budgetValue) || budgetValue <= 0) {
+                return { success: false, error: 'Ngân sách phải là số dương' };
+            }
+        }
+
         const lead = await prisma.lead.create({
             data: {
-                ...data,
+                name: data.name.trim(),
+                phone: data.phone.trim(),
+                email: data.email?.trim(),
+                source: data.source,
                 status: 'NEW',
                 score: 10,
-                // Convert string budget to number
-                budget: data.budget ? (parseFloat(data.budget.toString().replace(/,/g, '')) || undefined) : undefined,
+                budget: data.budget ? parseFloat(data.budget.toString().replace(/,/g, '')) : null,
+                model_interest: data.model_interest,
+                model_version: data.model_version,
+                address: data.address,
+                notes: data.notes,
+                customer_type: data.customer_type
             }
         });
         safeRevalidatePath('/crm/leads');
@@ -77,9 +110,30 @@ export async function updateLeadStatus(id: string, newStatus: LeadStatus, notes?
     try {
         const lead = await prisma.lead.findUnique({
             where: { id },
-            include: { interactions: { where: { type: 'STAGE_CHANGE' }, orderBy: { created_at: 'desc' }, take: 1 } }
+            include: { Interaction: { where: { type: 'STAGE_CHANGE' }, orderBy: { created_at: 'desc' }, take: 1 } }
         });
         if (!lead) throw new Error("Lead not found");
+
+        const oldStatus = lead.status;
+        if (newStatus !== oldStatus) {
+            const validTransitions: Record<string, string[]> = {
+                'NEW': ['CONTACTED', 'QUALIFIED', 'PROPOSAL', 'DEAD'],
+                'CONTACTED': ['QUALIFIED', 'PROPOSAL', 'NEGOTIATION', 'DEAD'],
+                'QUALIFIED': ['PROPOSAL', 'NEGOTIATION', 'WON', 'DEAD'],
+                'PROPOSAL': ['NEGOTIATION', 'WON', 'DEAD'],
+                'NEGOTIATION': ['WON', 'DEAD'],
+                'WON': [],
+                'DEAD': ['NEW']
+            };
+
+            const allowedStatuses = validTransitions[oldStatus] || [];
+            if (!allowedStatuses.includes(newStatus)) {
+                return {
+                    success: false,
+                    error: `Không thể chuyển từ trạng thái ${oldStatus} sang ${newStatus}. Các trạng thái hợp lệ: ${allowedStatuses.join(', ') || 'không có'}`
+                };
+            }
+        }
 
         let userId = lead.assigned_to_id;
 
@@ -92,11 +146,10 @@ export async function updateLeadStatus(id: string, newStatus: LeadStatus, notes?
             userId = systemUserObj?.id || null;
         }
 
-        const oldStatus = lead.status;
         const now = new Date();
 
         let durationSeconds = 0;
-        const lastStageChange = lead.interactions[0];
+        const lastStageChange = lead.Interaction[0];
         if (lastStageChange) {
             durationSeconds = Math.floor((now.getTime() - lastStageChange.created_at.getTime()) / 1000);
         } else {
@@ -212,7 +265,7 @@ export async function deleteLead(id: string) {
     try {
         await prisma.lead.update({
             where: { id },
-            data: { 
+            data: {
                 status: 'DEAD',
                 deleted_at: new Date()
             }

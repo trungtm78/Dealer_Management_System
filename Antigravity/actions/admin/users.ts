@@ -23,27 +23,43 @@ export async function getUsers(): Promise<UserDTO[]> {
   }
 }
 
-export async function createUser(data: CreateUserInput) {
-  try {
-    const hashedPassword = await bcrypt.hash("honda123", 10);
-    const user = await prisma.user.create({
-      data: {
-        email: data.email,
-        name: data.name,
-        role: data.role,
-        department: data.department,
-        phone: data.phone,
-        password_hash: hashedPassword,
-        status: 'ACTIVE'
-      }
-    });
-    revalidatePath("/admin/users");
-    return { success: true, data: user };
-  } catch (error: any) {
-    console.error("Failed to create user:", error);
-    return { success: false, error: error.message };
-  }
-}
+ export async function createUser(data: CreateUserInput) {
+   try {
+     if (!data.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
+       return { success: false, error: "Email không đúng định dạng" };
+     }
+
+     if (!data.phone || !/^\d{10}$/.test(data.phone.toString())) {
+       return { success: false, error: "Số điện thoại phải có 10 chữ số" };
+     }
+
+     const roleExists = await prisma.role.findFirst({
+       where: { name: data.role }
+     });
+     if (!roleExists) {
+       return { success: false, error: "Vai trò không tồn tại trong hệ thống" };
+     }
+
+     const hashedPassword = await bcrypt.hash("honda123", 10);
+     const user = await prisma.user.create({
+       data: {
+         email: data.email,
+         name: data.name,
+         role: data.role,
+         role_id: roleExists.id,
+         department: data.department,
+         phone: data.phone,
+         password_hash: hashedPassword,
+         status: 'ACTIVE'
+       }
+     });
+     revalidatePath("/admin/users");
+     return { success: true, data: user };
+   } catch (error: any) {
+     console.error("Failed to create user:", error);
+     return { success: false, error: error.message };
+   }
+ }
 
 export async function updateUser(id: string, data: UpdateUserInput) {
   try {
