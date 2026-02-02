@@ -19,30 +19,22 @@ export async function GET(request: NextRequest) {
       where.invoice_type = invoiceType
     }
 
-    const invoices = await prisma.invoice.findMany({
-      where,
-      include: {
-        customer: {
-          select: {
-            id: true,
-            name: true,
-            phone: true,
-            email: true
-          }
-        },
-        payments: true,
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        }
-      },
-      orderBy: { created_at: 'desc' }
-    })
+     const invoices = await prisma.invoice.findMany({
+       where,
+       include: {
+         Customer: {
+           select: {
+             id: true,
+             name: true,
+             phone: true,
+             email: true
+           }
+         }
+       },
+       orderBy: { created_at: 'desc' }
+     })
 
-    return NextResponse.json(invoices)
+     return NextResponse.json(invoices)
   } catch (error) {
     console.error('Failed to fetch invoices:', error)
     return NextResponse.json(
@@ -55,53 +47,68 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { 
-      customer_id, 
-      invoice_date, 
-      due_date, 
-      invoice_type, 
-      status, 
-      items 
+    const {
+      customer_id,
+      invoice_date,
+      due_date,
+      invoice_type,
+      status,
+      sub_total,
+      vat,
+      total_amount,
+      items
     } = body
 
-// Simplified invoice creation - items will need to be handled separately
+    if (total_amount !== undefined && total_amount <= 0) {
+      return NextResponse.json(
+        { error: 'Invoice amount must be positive' },
+        { status: 400 }
+      )
+    }
+    if (sub_total !== undefined && sub_total < 0) {
+      return NextResponse.json(
+        { error: 'Invoice sub_total cannot be negative' },
+        { status: 400 }
+      )
+    }
+    if (vat !== undefined && vat < 0) {
+      return NextResponse.json(
+        { error: 'Invoice VAT cannot be negative' },
+        { status: 400 }
+      )
+    }
+
+ // Simplified invoice creation - items will need to be handled separately
     const year = new Date().getFullYear()
     const invoiceNumber = `INV-${year}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`
-    
-    const invoice = await prisma.invoice.create({
-      data: {
-        invoice_number: invoiceNumber,
-        customer_id,
-        invoice_date: new Date(invoice_date),
-        due_date: new Date(due_date),
-        invoice_type,
-        status,
-        sub_total: 0,
-        vat: 0,
-        total_amount: 0,
-        created_by_id: '1'
-      },
-      include: {
-        customer: {
-          select: {
-            id: true,
-            name: true,
-            phone: true,
-            email: true
-          }
-        },
-        payments: true,
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        }
-      }
-    })
+    const userId = 'system'
 
-    return NextResponse.json(invoice)
+     const invoice = await prisma.invoice.create({
+       data: {
+         invoice_number: invoiceNumber,
+         customer_id,
+         invoice_date: new Date(invoice_date),
+         due_date: new Date(due_date),
+         invoice_type,
+         status,
+         sub_total: sub_total || 0,
+         vat: vat || 0,
+         total_amount: total_amount || 0,
+         created_by_id: userId
+       },
+       include: {
+         Customer: {
+           select: {
+             id: true,
+             name: true,
+             phone: true,
+             email: true
+           }
+         }
+       }
+     })
+
+     return NextResponse.json(invoice)
   } catch (error) {
     console.error('Failed to create invoice:', error)
     return NextResponse.json(

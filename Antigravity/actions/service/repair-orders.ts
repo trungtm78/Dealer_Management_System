@@ -32,8 +32,8 @@ export async function getRepairOrders(query?: string) {
         const repairOrders = await prisma.repairOrder.findMany({
             orderBy: { created_at: 'desc' },
             include: {
-                customer: { select: { name: true } },
-                technician: { select: { name: true } }
+                Customer: { select: { name: true } },
+                User_RepairOrder_technician_idToUser: { select: { name: true } }
             }
         });
         return repairOrders.map(mapToDTO);
@@ -51,9 +51,9 @@ export async function getRepairOrder(id: string) {
         const ro = await prisma.repairOrder.findUnique({
             where: { id },
             include: {
-                customer: { select: { name: true } },
-                technician: { select: { name: true } },
-                lineItems: true
+                Customer: { select: { name: true } },
+                User_RepairOrder_technician_idToUser: { select: { name: true } },
+                ROLineItem: true
             }
         });
         if (!ro) return null;
@@ -73,18 +73,22 @@ export async function createRepairOrder(data: CreateRepairOrderInput) {
         const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
         const roNumber = `RO-${dateStr}-${random}`;
 
+        if (!roNumber || !roNumber.trim()) {
+            throw new Error('RO Number is required');
+        }
+
         const newRO = await prisma.repairOrder.create({
             data: {
                 ro_number: roNumber,
                 customer_id: data.customerId,
                 vehicle_info: JSON.stringify(data.vehicleInfo),
                 customer_complaints: data.symptoms,
-                advisor_id: data.technicianId || 'system', // Mapping technicianId to advisor_id for simplicity or fix logic
+                advisor_id: data.technicianId || 'system',
                 status: 'PENDING'
             },
             include: {
-                customer: { select: { name: true } },
-                technician: { select: { name: true } }
+                Customer: { select: { name: true } },
+                User_RepairOrder_technician_idToUser: { select: { name: true } }
             }
         });
         revalidatePath('/service/repair-orders');
@@ -107,8 +111,8 @@ export async function updateRepairOrder(id: string, data: UpdateRepairOrderInput
                 ...data
             },
             include: {
-                customer: { select: { name: true } },
-                technician: { select: { name: true } }
+                Customer: { select: { name: true } },
+                User_RepairOrder_technician_idToUser: { select: { name: true } }
             }
         });
         revalidatePath('/service/repair-orders');
@@ -124,6 +128,12 @@ export async function updateRepairOrder(id: string, data: UpdateRepairOrderInput
  */
 export async function deleteRepairOrder(id: string) {
     try {
+        const lineItemsCount = await prisma.rOLineItem.count({
+            where: { ro_id: id }
+        });
+        if (lineItemsCount > 0) {
+            throw new Error('Không thể xóa Repair Order vì có Line Items. Vui lòng xóa Line Items trước.');
+        }
         await prisma.repairOrder.delete({ where: { id } });
         revalidatePath('/service/repair-orders');
         return { success: true };
