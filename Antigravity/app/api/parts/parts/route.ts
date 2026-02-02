@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server'
+ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { EntityValidators } from '@/lib/entity-validators'
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
     const parts = await prisma.part.findMany({
       where,
       include: {
-        supplier: {
+        Supplier: {
           select: {
             id: true,
             name: true,
@@ -47,16 +48,24 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { 
-      part_number, 
-      name, 
-      description, 
-      category, 
-      unit_price, 
-      stock_quantity, 
-      minimum_stock, 
-      supplier_id 
+    const {
+      part_number,
+      name,
+      description,
+      category,
+      unit_price,
+      stock_quantity,
+      minimum_stock,
+      supplier_id
     } = body
+
+    EntityValidators.parts({
+      part_number,
+      name,
+      unit_price,
+      stock_quantity,
+      minimum_stock
+    })
 
     const part = await prisma.part.create({
       data: {
@@ -67,11 +76,11 @@ export async function POST(request: NextRequest) {
         quantity: parseInt(stock_quantity),
         min_stock: parseInt(minimum_stock),
         unit_price: parseFloat(unit_price),
-        cost_price: parseFloat(unit_price) * 0.7, // Assume 30% margin
+        cost_price: parseFloat(unit_price) * 0.7,
         supplier_id
       },
       include: {
-        supplier: {
+        Supplier: {
           select: {
             id: true,
             name: true,
@@ -83,11 +92,11 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json(part)
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to create part:', error)
     return NextResponse.json(
-      { error: 'Failed to create part' },
-      { status: 500 }
+      { error: error.message || 'Failed to create part' },
+      { status: error.name === 'ValidationError' ? 400 : 500 }
     )
   }
 }

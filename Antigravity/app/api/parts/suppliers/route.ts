@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { EntityValidators } from '@/lib/entity-validators'
 
 export async function GET(request: NextRequest) {
   try {
@@ -33,15 +34,22 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { 
-      name, 
-      contact_person, 
-      phone, 
-      email, 
-      address, 
-      tax_id, 
-      payment_terms 
+    const {
+      name,
+      contact_person,
+      phone,
+      email,
+      address,
+      tax_id,
+      payment_terms
     } = body
+
+    EntityValidators.suppliers({
+      name,
+      contact_person,
+      contact_phone: phone,
+      contact_email: email
+    })
 
     const supplier = await prisma.supplier.create({
       data: {
@@ -56,11 +64,11 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json(supplier)
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to create supplier:', error)
     return NextResponse.json(
-      { error: 'Failed to create supplier' },
-      { status: 500 }
+      { error: error.message || 'Failed to create supplier' },
+      { status: error.name === 'ValidationError' ? 400 : 500 }
     )
   }
 }
