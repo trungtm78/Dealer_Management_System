@@ -14,14 +14,14 @@ export async function GET(request: NextRequest) {
     const workLogs = await prisma.workLog.findMany({
       where,
       include: {
-        repairOrder: {
+        RepairOrder: {
           select: {
             id: true,
             ro_number: true,
             customer_id: true
           }
         },
-        technician: {
+        User: {
           select: {
             id: true,
             name: true,
@@ -58,14 +58,14 @@ export async function POST(request: NextRequest) {
         notes
       },
       include: {
-        repairOrder: {
+        RepairOrder: {
           select: {
             id: true,
             ro_number: true,
             customer_id: true
           }
         },
-        technician: {
+        User: {
           select: {
             id: true,
             name: true,

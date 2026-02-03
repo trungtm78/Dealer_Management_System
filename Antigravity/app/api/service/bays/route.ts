@@ -3,18 +3,9 @@ import prisma from "@/lib/prisma";
 
 export async function GET(req: NextRequest) {
     try {
-        const bays = await prisma.serviceBay.findMany({
-            include: {
-                assignments: {
-                    where: { status: { in: ['ASSIGNED', 'WORKING'] } },
-                    include: {
-                        repairOrder: {
-                            include: { customer: true }
-                        }
-                    }
-                }
-            },
-            orderBy: { name: 'asc' }
+        const bays = await prisma.service_bays.findMany({
+            where: { status: { not: 'DELETED' } },
+            orderBy: { bay_name: 'asc' }
         });
 
         return NextResponse.json({
@@ -33,23 +24,23 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { name, location, capacity, equipment } = body;
+        const { bay_name, bay_code, bay_type, location, capacity_vehicles } = body;
 
-        if (!name) {
+        if (!bay_name || !bay_code) {
             return NextResponse.json({
                 success: false,
-                error: { code: "BAY_400", message: "Name is required" }
+                error: { code: "BAY_400", message: "Bay name and code are required" }
             }, { status: 400 });
         }
 
-        const bay = await prisma.serviceBay.create({
+        const bay = await prisma.service_bays.create({
             data: {
-                name,
+                bay_name,
+                bay_code,
+                bay_type: bay_type || 'GENERAL',
+                capacity_vehicles: capacity_vehicles || 1,
                 location,
-                capacity,
-                equipment: equipment ? JSON.stringify(equipment) : null,
-                status: 'ACTIVE',
-                is_available: true
+                status: 'ACTIVE'
             }
         });
 

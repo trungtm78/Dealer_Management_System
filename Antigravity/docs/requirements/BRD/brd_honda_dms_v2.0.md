@@ -8,8 +8,9 @@
 | Thông Tin | Chi Tiết |
 |-----------|----------|
 | **Dự Án** | Honda Dealer Management System (Honda DMS) |
-| **Phiên Bản BRD** | 2.0 - Business Focused |
+| **Phiên Bản BRD** | 2.1 - Business Focused + Master Data |
 | **Ngày Tạo** | 28/01/2026 |
+| **Cập Nhật** | 31/01/2026 (CR-MD-001) |
 | **Loại Tài Liệu** | Business Requirements Document |
 | **Phạm Vi** | Toàn bộ hệ thống quản lý đại lý |
 
@@ -22,13 +23,14 @@
 3. [Scope & Boundaries](#3-scope--boundaries)
 4. [Actors & Stakeholders](#4-actors--stakeholders)
 5. [Business Requirements](#5-business-requirements)
-   - [5.1 CRM & Customer Management](#51-crm--customer-management)
-   - [5.2 Sales Operations](#52-sales-operations)
-   - [5.3 Service Operations](#53-service-operations)
-   - [5.4 Parts & Inventory](#54-parts--inventory)
-   - [5.5 Insurance Management](#55-insurance-management)
-   - [5.6 Financial Management](#56-financial-management)
-   - [5.7 System Administration](#57-system-administration)
+   - [5.1 Master Data Management](#51-master-data-management)
+   - [5.2 CRM & Customer Management](#52-crm--customer-management)
+   - [5.3 Sales Operations](#53-sales-operations)
+   - [5.4 Service Operations](#54-service-operations)
+   - [5.5 Parts & Inventory](#55-parts--inventory)
+   - [5.6 Insurance Management](#56-insurance-management)
+   - [5.7 Financial Management](#57-financial-management)
+   - [5.8 System Administration](#58-system-administration)
 6. [Business Rules & Constraints](#6-business-rules--constraints)
 7. [Success Criteria](#7-success-criteria)
 
@@ -174,6 +176,7 @@ Xây dựng Honda DMS - một nền tảng quản lý tích hợp, số hóa to�
 
 | Module | Chức Năng |
 |--------|-----------|
+| **Master Data** | VehicleModel, Accessory, ServiceCatalog, ServiceBay, ScoringRule, SystemSetting management |
 | **CRM** | Lead management, Customer 360, Loyalty program, Marketing campaigns, Complaint handling |
 | **Sales** | Quotation, Test drive scheduling, Deposit management, VIN allocation, PDS & Delivery |
 | **Service** | Appointment booking, Reception, Repair orders, Technician workflow, QC, Settlement |
@@ -381,7 +384,79 @@ Xây dựng Honda DMS - một nền tảng quản lý tích hợp, số hóa to�
 
 ---
 
-### 5.1 CRM & Customer Management
+### 5.1 Master Data Management
+
+#### BR-MD-001: VehicleModel Master Data Management
+
+**Business Need**:  
+Quản lý danh mục xe (VehicleModel) để chuẩn hóa dữ liệu và loại bỏ việc nhập tay không nhất quán.
+
+**Actors**: Admin, Sales Consultant, Service Advisor
+
+**Business Context**:
+
+Trong nghiệp vụ bán xe, **danh mục xe (VehicleModel)** là master data quan trọng nhất. Hiện tại hệ thống không có màn hình quản lý, dẫn đến:
+
+1. **Inconsistent Data**: Sales nhập tay `model_interest` trong Lead → Sai chính tả, không chuẩn
+   - Ví dụ: "Honda City", "HONDA CITY", "City", "city", "City 2024" → Không thể báo cáo
+
+2. **Manual Pricing**: Base price hardcoded trong code → Khó cập nhật khi có thay đổi giá
+
+3. **No Product Control**: Không kiểm soát được danh sách xe đang bán, xe ngừng bán
+
+**Business Flow**:
+
+```mermaid
+graph TD
+    A[Admin tạo VehicleModel] --> B[Nhập thông tin]
+    B --> C[System auto-generate model_code]
+    C --> D[Admin nhập: name, category, price]
+    D --> E[System validate]
+    E -->|Valid| F[Lưu vào database]
+    E -->|Invalid| G[Hiển thị lỗi]
+    G --> D
+    F --> H[Model available in dropdowns]
+    H --> I[Sales chọn từ dropdown]
+    I --> J[System auto-fill base_price]
+    J --> K[Quotation created với data chuẩn]
+```
+
+**Business Rules**:
+- BR-MD-001-R1: Model code format MOD/YYYY/XXX, auto-generated
+- BR-MD-001-R2: Model name must be unique (case-insensitive)
+- BR-MD-001-R3: Base price must be > 0
+- BR-MD-001-R4: Status ACTIVE = available in dropdowns, INACTIVE = soft deleted
+- BR-MD-001-R5: Cannot hard delete if referenced by Quotation/Vehicle (data integrity)
+
+**Success Criteria**:
+- ✅ 100% data consistency (no typos in model names)
+- ✅ 90% user adoption (Sales không nhập tay)
+- ✅ Sales Dashboard có thể group by model chính xác
+- ✅ Time saved: 50% faster data entry cho Sales
+
+**UI Reference**: Sử dụng pattern tương tự PartsStockTake.tsx (table + search + filters)
+
+**Change Impact - CR-MD-001**:
+
+**Business Problem Addressed**:
+- Inconsistent vehicle model data entry
+- Manual pricing updates
+- Inability to generate accurate reports
+
+**New Business Flow**:
+1. Admin creates/updates VehicleModel in master data
+2. Sales selects from dropdown (no manual entry)
+3. System auto-fills base_price from master
+4. Reports group by standardized model names
+
+**Stakeholder Impact**:
+- **Admin**: New responsibility to maintain master data
+- **Sales Team**: Faster data entry, no typos, accurate quotations
+- **Management**: Accurate sales reports by model, better business insights
+
+---
+
+### 5.2 CRM & Customer Management
 
 #### BR-CRM-001: Lead Management
 

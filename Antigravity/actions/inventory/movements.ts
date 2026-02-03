@@ -10,14 +10,14 @@ function mapToDTO(m: any): StockMovementDTO {
     return {
         id: m.id,
         partId: m.part_id,
-        partName: m.part?.name,
-        partNumber: m.part?.part_number,
+        partName: m.Part?.name,
+        partNumber: m.Part?.part_number,
         type: m.type,
         quantity: m.quantity,
         reason: m.notes,
         reference: m.reference_id,
         createdById: m.user_id,
-        createdByName: m.user?.name,
+        createdByName: m.User?.name,
         createdAt: m.created_at.toISOString()
     }
 }
@@ -32,9 +32,9 @@ export async function getStockMovements(partId?: string) {
 
         const movements = await prisma.stockMovement.findMany({
             where,
-include: {
-                part: { select: { name: true, part_number: true } },
-                user: { select: { name: true } }
+            include: {
+                Part: { select: { name: true, part_number: true } },
+                User: { select: { name: true } }
             },
             orderBy: { created_at: 'desc' },
             take: 100
@@ -115,8 +115,8 @@ const movement = await tx.stockMovement.create({
         const fullMovement = await prisma.stockMovement.findUnique({
             where: { id: result.id },
             include: {
-                part: true,
-                user: true
+                Part: true,
+                User: true
             }
         });
 

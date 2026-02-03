@@ -25,7 +25,7 @@ function mapToLeadDTO(l: any): LeadDTO {
         time_created: l.created_at.toLocaleString("vi-VN"), // For UI display
         created_at: l.created_at.toISOString(),
         updated_at: l.updated_at.toISOString(),
-        interactions: l.interactions?.map((i: any) => ({
+        interactions: l.Interaction?.map((i: any) => ({
             id: i.id,
             content: i.notes,
             type: i.type,
@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
 
         const leads = await prisma.lead.findMany({
             where,
-            include: { interactions: true },
+            include: { Interaction: true },
             orderBy: { created_at: "desc" },
             take: 100
         });

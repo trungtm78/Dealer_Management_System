@@ -248,7 +248,7 @@ export default function VehicleList() {
                                             <TableCell>{v.version}</TableCell>
                                             <TableCell>{v.color}</TableCell>
                                             <TableCell>{v.warehouse || "-"}</TableCell>
-                                            <TableCell>{v.arrival_date ? new Date(v.arrival_date).toLocaleDateString('vi-VN') : "-"}</TableCell>
+                                            <TableCell>{v.arrivalDate ? new Date(v.arrivalDate).toLocaleDateString('vi-VN') : "-"}</TableCell>
                                             <TableCell className="text-center">
                                                 {getStatusBadge(v.status)}
                                             </TableCell>

@@ -1,0 +1,682 @@
+================================================================================
+                    CHANGE REQUEST & ADD FEATURE PROCESS
+                         ANTIGRAVITY DEVELOPMENT
+================================================================================
+
+MỤC TIÊU:
+- Xử lý Change Request và Add Feature một cách có hệ thống
+- Đảm bảo tất cả thay đổi được cập nhật vào tài liệu requirement
+- CONSOLIDATE: Merge tất cả changes vào FILE CHÍNH (SINGLE SOURCE OF TRUTH)
+- Developers CHỈ CẦN ĐỌC file requirement chính (latest version)
+
+QUY TẮC VÀNG:
+⭐ Sau mỗi CR, tất cả thay đổi PHẢI được CONSOLIDATE vào file chính
+⭐ File chính (BRD, FRD, ERD, API Spec, UI Spec) = SINGLE SOURCE OF TRUTH
+⭐ Developers KHÔNG CẦN rà soát từng CR riêng lẻ
+⭐ CHỈ ĐỌC file chính latest version: BRD_v1.1.md, FRD_v1.3.md, ERD_v1.1.*
+
+================================================================================
+                              QUY TRÌNH TỔNG QUAN
+================================================================================
+
+LUỒNG CR:
+┌────────────────────────────────────────────────────────────┐
+│ CR Request → CR Analysis → Update Docs (DRAFT)             │
+│ → Review & Approve → ⭐ CONSOLIDATE ⭐ → Implementation   │
+└────────────────────────────────────────────────────────────┘
+
+VÍ DỤ:
+- Trước CR: BRD_v1.0.md (file chính)
+- Trong CR: BRD_CR-001_DRAFT.md (file draft riêng trong CR folder)
+- Sau CR: BRD_v1.1.md (file chính đã merge CR-001) ← CHỈ ĐỌC FILE NÀY
+
+File Structure:
+```
+docs/
+├── requirements/
+│   ├── BRD/
+│   │   ├── BRD_v1.1.md ← ĐANG DÙNG (latest)
+│   │   └── BRD_v1.0.md (previous)
+│   ├── FRD/
+│   │   ├── frd_module_v1.3.md ← ĐANG DÙNG (latest)
+│   │   └── frd_module_v1.2.md (previous)
+│   └── change_requests/
+│       └── CR-20250131-001/
+│           ├── change_request_<CR-ID>_intake_vX.Y.md
+│           ├── change_request_<CR-ID>_impact_analysis_vX.Y.md
+│           ├── change_request_<CR-ID>_review_decision_vX.Y.md
+│           ├── change_request_<CR-ID>_consolidation_report_vX.Y.md
+│           ├── CONSOLIDATED.md (marker - CR đã xong)
+│           └── drafts/ (archive)
+├── design/
+│   ├── database/erd/
+│   │   ├── erd_v1.1.png ← ĐANG DÙNG (latest)
+│   │   ├── erd_description_v1.1.md
+│   │   └── dictionary/*.md (consolidated)
+│   ├── api/
+│   │   └── api_spec_v1.2.md ← ĐANG DÙNG (latest)
+│   └── ui/
+│       └── ui_spec_v1.1.md ← ĐANG DÙNG (latest)
+```
+
+================================================================================
+                  PROMPT #CR-01: CR INTAKE & VALIDATION
+                         (Antigravity Authority)
+================================================================================
+
+INPUT:
+- Change Request document (từ user/business/bug)
+- Tài liệu hiện hành (latest): BRD, FRD, ERD, API Spec, UI Spec, Refs
+- Change request cụ thể: change_request_vx.y.md
+
+MỤC ĐÍCH:
+- Thu thập và làm rõ Change Request
+- Validation CR có hợp lệ không
+- Phân loại: Change existing feature / Add new feature / Technical improvement
+- Gán CR ID
+
+THỰC HIỆN:
+
+1. Thu thập thông tin:
+   - CR Title, Description, Requestor, Priority
+   - Business Justification, Expected Outcome, Acceptance Criteria
+
+2. Validation:
+   - Duplicate Check (CR đã tồn tại chưa?)
+   - Scope Check (trong scope hệ thống không?)
+   - Feasibility Check (Refs/ERD có thể đáp ứng không?)
+
+3. Phân loại:
+   - Type 1: CHANGE EXISTING FEATURE (sửa chức năng có sẵn)
+   - Type 2: ADD NEW FEATURE (thêm chức năng mới)
+   - Type 3: TECHNICAL IMPROVEMENT (refactor, optimize - đi quy trình Refactoring)
+
+4. Gán CR ID: Format CR-YYYYMMDD-XXX
+   Ví dụ: CR-20250131-001
+
+OUTPUT:
+```
+docs/requirements/change_requests/CR-20250131-001/change_request_<CR-ID>_intake_vX.Y.md
+```
+
+Nội dung: CR info, validation results, classification, status (APPROVED/REJECTED)
+
+Quy tắc:
+- KHÔNG skip validation
+- REJECT rõ ràng nếu không hợp lệ
+- KHÔNG viết code
+
+
+================================================================================
+                  PROMPT #CR-02: CR IMPACT ANALYSIS
+                         (Antigravity Authority)
+================================================================================
+
+INPUT:
+- CR Intake: change_request_<CR-ID>_intake_vX.Y.md
+- Tài liệu hiện hành (latest): BRD, FRD, ERD, API Spec, UI Spec, Refs
+
+MỤC ĐÍCH:
+Phân tích chi tiết impact của CR đến:
+- Business Requirements (BRD)
+- Functional Requirements (FRD) - đặc biệt Data Requirements
+- Data Model (ERD)
+- API Contracts (API Spec)
+- UI Components (UI Spec, Refs)
+
+THỰC HIỆN:
+
+1. BRD Impact:
+   - Business objectives thay đổi?
+   - Actors mới?
+   - Business flow thay đổi?
+
+2. FRD Impact (QUAN TRỌNG):
+   - Screens nào bị ảnh hưởng? (existing/new)
+   - ⭐ Data Requirements Changes:
+     * Entity mới: name, fields (type, constraints), relationships, classification
+     * Entity hiện tại: fields mới, relationships mới
+   - Business rules mới/sửa?
+   - Validation rules thay đổi?
+
+3. ERD Impact (dựa trên FRD Data Requirements):
+   - Tables mới: name, columns, PKs, FKs, indexes
+   - Tables hiện tại: columns mới, constraints mới
+   - Migration strategy (nullable first, backfill data?)
+   - Breaking changes check
+
+4. API Spec Impact:
+   - Endpoints mới: path, method, FRD mapping, ERD mapping, specs
+   - Endpoints hiện tại sửa: breaking changes?
+   - Versioning cần thiết không (v1 → v2)?
+
+5. UI Spec Impact & Refs Evaluation:
+   - Screens mới/sửa
+   - Refs có đáp ứng không?
+     * Reuse As-Is ✅
+     * Extend Allowed ✅
+     * Component Not Available → YÊU CẦU extend Refs ⚠️
+     * KHÔNG cho phép tạo UI mới ngoài Refs ❌
+
+6. Effort Estimate:
+   - Complexity: Simple / Medium / Complex
+   - Story Points, Hours
+   - Risk Level
+
+OUTPUT:
+```
+docs/requirements/change_requests/CR-20250131-001/change_request_<CR-ID>_impact_analysis_vX.Y.md
+```
+
+Nội dung:
+- Impact Matrix (documents affected)
+- Chi tiết changes cho từng document:
+  * BRD changes
+  * FRD changes (đặc biệt Data Requirements)
+  * ERD changes (tables, columns, FKs)
+  * API Spec changes (endpoints, breaking changes)
+  * UI Spec changes (screens, Refs evaluation)
+- Effort estimate
+- Risk assessment
+
+Quy tắc:
+- Phân tích kỹ lưỡng TẤT CẢ impacts
+- FRD Data Requirements phải chi tiết (entities, fields, relationships)
+- Đánh giá Refs thoroughly
+- KHÔNG skip document nào
+- KHÔNG viết code
+
+
+================================================================================
+                  PROMPT #CR-03: UPDATE REQUIREMENT DOCUMENTS (DRAFT)
+                         (Antigravity Authority)
+================================================================================
+
+INPUT:
+- CR Impact Analysis: change_request_<CR-ID>_impact_analysis_vX.Y.md
+- Tài liệu hiện hành (latest): BRD, FRD, ERD, API Spec, UI Spec
+
+MỤC ĐÍCH:
+- Tạo DRAFT versions của tất cả documents cần update
+- CHƯA update file chính
+- Lưu drafts trong CR folder để review
+
+THỰC HIỆN:
+
+1. Tạo CR-specific Document Drafts trong:
+   ```
+   docs/requirements/change_requests/CR-20250131-001/drafts/
+   ├── BRD_CR-20250131-001_DRAFT.md
+   ├── frd_module_CR-20250131-001_DRAFT.md
+   ├── erd_CR-20250131-001_DRAFT/
+   │   ├── erd_DRAFT.png
+   │   ├── erd_description_DRAFT.md
+   │   └── dictionary/
+   │       └── loyalty_points_DRAFT.md (new table)
+   ├── api_spec_CR-20250131-001_DRAFT.md
+   └── ui_spec_CR-20250131-001_DRAFT.md
+   ```
+
+2. Update BRD (nếu cần):
+   - Copy BRD hiện tại vào draft
+   - Thêm/sửa sections
+   - Đánh dấu changes: `<!-- CR-20250131-001: ADDED -->...<!-- END CR-20250131-001 -->`
+
+3. Update FRD (nếu cần):
+   - Copy FRD hiện tại vào draft
+   - Update screens
+   - ⭐ UPDATE Data Requirements section:
+     * Add new entities với đầy đủ: fields (name, type, constraints), relationships, classification
+     * Update existing entities với new fields
+   - Update business rules, validation rules
+   - Đánh dấu changes
+
+4. Update ERD (nếu cần):
+   - Copy ERD files vào draft folder
+   - Update ERD diagram với new tables/columns
+   - Update erd_description
+   - ⭐ Create/Update dictionary files (per table):
+     ```markdown
+     # Table: loyalty_points
+     ## Purpose, Classification
+     ## Columns (name, type, nullable, constraints)
+     ## Indexes, Relationships, Usage (screens/APIs)
+     ## Business Rules, Sample Data, Migration Notes
+     ```
+
+5. Update API Spec (nếu cần):
+   - Add new endpoints với: FRD mapping, ERD mapping, Request/Response specs, Error codes
+   - Update existing endpoints
+   - Đánh dấu changes
+
+6. Update UI Spec (nếu cần):
+   - Add new screens với Refs mapping
+   - Update existing screens
+   - Đánh dấu changes
+
+7. Tạo Summary:
+   ```
+   docs/requirements/change_requests/CR-20250131-001/change_request_<CR-ID>_draft_summary_vX.Y.md
+   ```
+
+OUTPUT:
+- All draft files trong CR folder
+- Draft summary file
+
+Quy tắc:
+- Tạo drafts trong CR folder, KHÔNG touch file chính
+- Đánh dấu TẤT CẢ changes với CR ID
+- FRD Data Requirements phải chi tiết và đầy đủ
+- ERD phải 100% reflect FRD Data Requirements
+- KHÔNG viết code
+- KHÔNG increment version numbers (giữ vX.Y)
+
+
+================================================================================
+                  PROMPT #CR-04: REVIEW & APPROVE CR DOCUMENTS
+                         (Antigravity Authority)
+================================================================================
+
+INPUT:
+- All draft documents: docs/requirements/change_requests/CR-20250131-001/drafts/
+- CR Documents Draft Summary
+- Original documents (latest) để so sánh
+
+MỤC ĐÍCH:
+- Review tất cả draft documents
+- Verify consistency giữa các documents
+- Approve hoặc Request Changes
+
+THỰC HIỆN:
+
+1. Consistency Check:
+   - ✅ FRD Data Requirements ↔ ERD tables/columns (100% match)
+   - ✅ FRD Screens ↔ API Spec endpoints (all mapped)
+   - ✅ API Spec ↔ ERD (all fields mapped)
+   - ✅ FRD Screens ↔ UI Spec (all mapped)
+   - ✅ UI Spec ↔ Refs (all components available)
+
+2. Completeness Check:
+   - BRD: Objectives, Actors, Flows
+   - FRD: Screens, Data Requirements (đầy đủ), Business Rules
+   - ERD: Diagram, Description, Dictionary (per table)
+   - API Spec: Endpoints, Specs, Mappings
+   - UI Spec: Screen mappings, Refs strategy
+
+3. Quality Check:
+   - Changes đều được đánh dấu với CR ID
+   - No breaking changes (hoặc đã documented)
+   - Migration strategy defined (nếu có DB changes)
+   - Refs strategy clear (không tạo UI mới)
+
+4. Decision:
+   - ✅ APPROVED → Proceed to Consolidation (CR-05)
+   - ⚠️ REQUEST CHANGES → Fix drafts, re-review
+   - ❌ REJECTED → Close CR
+
+OUTPUT:
+```
+docs/requirements/change_requests/CR-20250131-001/change_request_<CR-ID>_review_decision_vX.Y.md
+```
+
+Nội dung: Review results, consistency checks, completeness checks, decision
+
+Quy tắc:
+- Review kỹ lưỡng
+- Consistency checks là BẮT BUỘC
+- REJECT rõ ràng nếu có vấn đề
+- KHÔNG skip check nào
+- KHÔNG viết code
+
+
+================================================================================
+       ⭐ PROMPT #CR-05: CONSOLIDATE INTO MAIN DOCUMENTS (QUAN TRỌNG) ⭐
+                         (Antigravity Authority)
+================================================================================
+
+INPUT:
+- Approved CR drafts: docs/requirements/change_requests/CR-20250131-001/drafts/
+- CR Review Decision (APPROVED)
+- Current main documents (latest versions)
+
+MỤC ĐÍCH:
+⭐⭐⭐ MERGE tất cả CR changes vào main documents ⭐⭐⭐
+⭐⭐⭐ INCREMENT versions ⭐⭐⭐
+⭐⭐⭐ Main documents trở thành SINGLE SOURCE OF TRUTH ⭐⭐⭐
+
+SAU BƯỚC NÀY:
+✅ Developers CHỈ đọc main documents (latest version)
+✅ KHÔNG CẦN đọc từng CR riêng lẻ
+✅ Main documents chứa TẤT CẢ thông tin
+
+NGUYÊN TẮC CONSOLIDATE:
+
+1. Single Source of Truth:
+   - Main documents là nguồn sự thật DUY NHẤT
+   - Sau consolidate, main documents chứa TẤT CẢ info
+   - CR files chỉ là lịch sử tham khảo
+
+2. Version Increment:
+   - Minor changes: vX.Y → vX.(Y+1) (ví dụ: v1.0 → v1.1)
+   - Major changes: vX.Y → v(X+1).0 (ví dụ: v1.5 → v2.0)
+
+3. Clean Integration:
+   - REMOVE CR-specific markers (<!-- CR-20250131-001: ADDED -->)
+   - Integrate changes naturally vào document
+   - Update change logs
+
+THỰC HIỆN:
+
+1. Determine New Versions:
+   ```
+   BRD v1.0 → v1.1
+   FRD v1.2 → v1.3
+   ERD v1.0 → v1.1
+   API Spec v1.1 → v1.2
+   UI Spec v1.0 → v1.1
+   ```
+
+2. Consolidate Each Document:
+   ```
+   BRD_v1.0.md (current)
+     ↓
+   BRD_v1.1.md (new) ← MERGE CR changes vào đây
+   ```
+
+   Process:
+   a. Create new version file (BRD_v1.1.md)
+   b. Copy all content from draft
+   c. REMOVE CR markers
+   d. Integrate changes seamlessly
+   e. Update version number in header
+   f. Update Change Log section:
+      ```
+      ## Version 1.1 - 2025-01-31
+      ### Changes
+      - Added loyalty program (CR-20250131-001)
+      - New actor: Loyalty Program Manager
+      ### Related
+      - CR: CR-20250131-001
+      - FRD: v1.2 → v1.3
+      - ERD: v1.0 → v1.1
+      
+      ## Version 1.0 - 2025-01-15
+      ### Initial Release
+      ```
+
+3. Special Handling for FRD:
+   - Integrate new entities vào Data Requirements section
+   - Update existing entities với new fields
+   - NO markers - integrate naturally
+   - Ensure formatting consistency
+
+4. Special Handling for ERD:
+   - Update main ERD diagram file: erd_v1.0.png → erd_v1.1.png
+   - Update erd_description_v1.1.md
+   - Add new dictionary files: dictionary/loyalty_points.md
+   - Update erd_change_log.md:
+     ```
+     ## Version 1.1 - 2025-01-31
+     ### Added
+     - Table: loyalty_points (CR-20250131-001)
+     ### Modified
+     - Table: customers (CR-20250131-001)
+     ### Related
+     - FRD v1.3 Data Requirements
+     ```
+
+5. Update Cross-references:
+   - FRD mentions: "Based on: BRD v1.1, ERD version: v1.1"
+   - ERD mentions: "Based on: FRD v1.3 Data Requirements"
+   - API Spec mentions: "Based on: FRD v1.3, ERD v1.1"
+
+6. Archive CR Folder:
+   - Keep CR folder for reference
+   - Create CONSOLIDATED.md marker:
+     ```markdown
+     # CR-20250131-001: CONSOLIDATED
+     Date: 2025-01-31
+     
+     ## Updated Documents
+     - BRD: v1.0 → v1.1
+     - FRD: v1.2 → v1.3
+     - ERD: v1.0 → v1.1
+     - API Spec: v1.1 → v1.2
+     - UI Spec: v1.0 → v1.1
+     
+     ## Developers: Read These Files
+     ✅ docs/requirements/BRD/BRD_v1.1.md
+     ✅ docs/requirements/FRD/frd_module_v1.3.md
+     ✅ docs/design/database/erd/erd_v1.1.*
+     ✅ docs/design/api/api_spec_v1.2.md
+     ✅ docs/design/ui/ui_spec_v1.1.md
+     
+     ❌ DO NOT read CR drafts
+     
+     Status: READY FOR IMPLEMENTATION
+     ```
+
+OUTPUT:
+
+1. Updated Main Documents (NEW versions):
+   ```
+   docs/requirements/BRD/BRD_v1.1.md
+   docs/requirements/FRD/frd_module_v1.3.md
+   docs/design/database/erd/erd_v1.1.png
+   docs/design/database/erd/erd_description_v1.1.md
+   docs/design/database/dictionary/loyalty_points.md (new)
+   docs/design/database/erd/erd_change_log.md (updated)
+   docs/design/api/api_spec_v1.2.md
+   docs/design/api/api_change_log.md (updated)
+   docs/design/ui/ui_spec_v1.1.md
+   ```
+
+2. Consolidation Report:
+   ```
+   docs/requirements/change_requests/CR-20250131-001/change_request_<CR-ID>_consolidation_report_vX.Y.md
+   ```
+
+3. CONSOLIDATED Marker:
+   ```
+   docs/requirements/change_requests/CR-20250131-001/CONSOLIDATED.md
+   ```
+
+DEFINITION OF DONE:
+
+✅ All CR changes merged into main documents
+✅ All CR markers removed from main documents
+✅ Versions incremented correctly
+✅ Change logs updated in all documents
+✅ Cross-references updated
+✅ New dictionary files added (if any)
+✅ Consolidation report created
+✅ CONSOLIDATED.md marker created
+✅ Main documents = Single Source of Truth
+✅ Developers can read ONLY main documents (latest versions)
+
+Quy tắc:
+- REMOVE all CR markers từ main documents
+- Main documents must be clean và natural
+- Version increments must be consistent
+- Change logs must reference CR ID
+- CONSOLIDATED marker indicates CR is done
+- KHÔNG viết code
+
+
+================================================================================
+                  PROMPT #CR-06: CR IMPLEMENTATION
+                         (OpenCode Authority)
+================================================================================
+
+INPUT:
+- Consolidated main documents (latest versions):
+  * BRD_v1.1.md
+  * frd_module_v1.3.md
+  * erd_v1.1.*
+  * api_spec_v1.2.md
+  * ui_spec_v1.1.md
+- CR Consolidation Report
+- instructions.md
+
+MỤC ĐÍCH:
+Implement CR theo consolidated documents, sử dụng standard implementation prompts
+
+THỰC HIỆN:
+
+1. Verify Documents Ready:
+   - ✅ CR Consolidation Report shows "COMPLETED"
+   - ✅ CONSOLIDATED.md marker exists
+   - ✅ All main documents have new versions
+   - ✅ Change logs updated
+
+2. Follow Standard Implementation Prompts:
+   
+   ⭐ CHỈ ĐỌC MAIN DOCUMENTS (latest versions)
+   ⭐ KHÔNG đọc CR draft files
+   
+   Implementation order:
+   
+   a. DB Implementation (Prompt #06)
+      - Input: ERD v1.1 (latest)
+      - Read: erd_v1.1.*, dictionary/*.md
+      - Output: Migrations, reports
+   
+   b. API Implementation (Prompt #07)
+      - Input: API Spec v1.2 + ERD v1.1
+      - Read: api_spec_v1.2.md
+      - Output: API layer, contract check
+   
+   c. BE Implementation (Prompt #08)
+      - Input: FRD v1.3 + ERD v1.1 + API Spec v1.2 + API layer
+      - Read: frd_module_v1.3.md
+      - Output: Services, repositories, tests
+   
+   d. FE Implementation (Prompt #09)
+      - Input: All docs (latest) + Refs
+      - Read: ui_spec_v1.1.md, api_spec_v1.2.md
+      - Output: FE code, refs mapping
+   
+   e. IT (Prompt #10)
+      - Input: API Spec + ERD + FRD (latest)
+      - Output: Integration tests
+
+3. Reference CR for Context (Optional):
+   - Developers MAY reference CR folder for WHY change was made
+   - But PRIMARY source is main documents (latest)
+
+OUTPUT:
+
+Standard implementation outputs:
+- db_migration_plan_v1.1.md
+- api_implementation_v1.2.md
+- backend_implementation_v1.3.md
+- frontend_implementation_v1.1.md
+- it_execution_report_v1.X.md
+
+Plus CR-specific summary:
+```
+docs/requirements/change_requests/CR-20250131-001/change_request_<CR-ID>_implementation_summary_vX.Y.md
+```
+
+Content:
+```markdown
+# CR Implementation Summary: CR-20250131-001
+
+## Status: ✅ COMPLETED
+Date: 2025-02-05
+
+## Documents Used (Latest Versions)
+- BRD v1.1
+- FRD v1.3
+- ERD v1.1
+- API Spec v1.2
+- UI Spec v1.1
+
+## Implementation Completed
+- ✅ DB (Prompt #06)
+- ✅ API (Prompt #07)
+- ✅ BE (Prompt #08)
+- ✅ FE (Prompt #09)
+- ✅ IT (Prompt #10)
+
+## Test Results
+- Unit Tests: 100% pass
+- Integration Tests: 100% pass
+- UAT: 100% pass
+
+## CR Status: CLOSED
+```
+
+Quy tắc:
+- CHỈ đọc main documents (latest versions)
+- Follow standard prompts (#06-#10)
+- Reference CR ID in reports
+- Standard testing requirements apply
+
+
+================================================================================
+                            TÓM TẮT QUY TRÌNH CR
+================================================================================
+
+QUY TRÌNH ĐẦY ĐỦ:
+
+```
+USER REQUEST
+    ↓
+#CR-01: CR Intake & Validation
+    → cr_intake.md
+    → Status: APPROVED/REJECTED
+    ↓
+#CR-02: CR Impact Analysis
+    → cr_impact_analysis.md
+    → Documents impacted: BRD/FRD/ERD/API/UI
+    ↓
+#CR-03: Update Docs (DRAFT)
+    → Create DRAFTS in CR folder
+    → Mark all changes with CR ID
+    ↓
+#CR-04: Review & Approve
+    → cr_review_decision.md
+    → Consistency checks
+    → Status: APPROVED/CHANGES/REJECTED
+    ↓
+#CR-05: ⭐⭐⭐ CONSOLIDATE ⭐⭐⭐
+    → MERGE drafts into main documents
+    → REMOVE CR markers
+    → INCREMENT versions (v1.0 → v1.1)
+    → UPDATE change logs
+    → CREATE consolidation report
+    ↓
+    📄 MAIN DOCUMENTS (latest) = SINGLE SOURCE OF TRUTH
+    📄 Developers CHỈ đọc main documents
+    ↓
+#CR-06: CR Implementation
+    → Follow standard prompts #06-#10
+    → Read ONLY main documents (latest)
+    ↓
+DONE: CR CLOSED
+```
+
+KEY POINTS:
+
+1. CR Folder chỉ là lịch sử tham khảo
+2. Main Documents = Single Source of Truth (sau CR-05)
+3. Developers CHỈ đọc main documents (latest versions)
+4. KHÔNG CẦN rà soát từng CR riêng lẻ
+5. Version management rõ ràng (vX.Y++)
+6. Change logs reference CR IDs cho traceability
+
+FILES DEVELOPERS ĐỌC (sau consolidate):
+✅ docs/requirements/BRD/BRD_v1.1.md
+✅ docs/requirements/FRD/frd_module_v1.3.md
+✅ docs/design/database/erd/erd_v1.1.*
+✅ docs/design/api/api_spec_v1.2.md
+✅ docs/design/ui/ui_spec_v1.1.md
+
+FILES DEVELOPERS KHÔNG ĐỌC:
+❌ docs/requirements/change_requests/CR-xxx/drafts/... (obsolete)
+❌ Các version cũ (v1.0, v1.2, etc.) trừ khi cần xem lịch sử
+
+================================================================================
+                                    END
+================================================================================

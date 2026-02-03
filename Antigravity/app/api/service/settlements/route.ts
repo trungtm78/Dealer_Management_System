@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
         status: 'COMPLETED'
       },
       include: {
-        customer: {
+        Customer: {
           select: {
             id: true,
             name: true,
@@ -25,17 +25,17 @@ export async function GET(request: NextRequest) {
             email: true
           }
         },
-        advisor: {
+        User: {
           select: {
             id: true,
             name: true,
             email: true
           }
         },
-        repairOrders: {
+        RepairOrder: {
           include: {
-            lineItems: true,
-            workLogs: true
+            ROLineItem: true,
+            WorkLog: true
           }
         }
       },
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
         status: 'COMPLETED'
       },
       include: {
-        customer: {
+        Customer: {
           select: {
             id: true,
             name: true,
@@ -71,17 +71,17 @@ export async function POST(request: NextRequest) {
             email: true
           }
         },
-        advisor: {
+        User: {
           select: {
             id: true,
             name: true,
             email: true
           }
         },
-        repairOrders: {
+        RepairOrder: {
           include: {
-            lineItems: true,
-            workLogs: true
+            ROLineItem: true,
+            WorkLog: true
           }
         }
       }

@@ -14,14 +14,14 @@ export async function GET(request: NextRequest) {
     const qcChecklists = await prisma.qCChecklist.findMany({
       where,
       include: {
-        repairOrder: {
+        RepairOrder: {
           select: {
             id: true,
             ro_number: true,
             customer_id: true
           }
         },
-        qcBy: {
+        User: {
           select: {
             id: true,
             name: true,
@@ -57,14 +57,14 @@ export async function POST(request: NextRequest) {
         rework_notes
       },
       include: {
-        repairOrder: {
+        RepairOrder: {
           select: {
             id: true,
             ro_number: true,
             customer_id: true
           }
         },
-        qcBy: {
+        User: {
           select: {
             id: true,
             name: true,

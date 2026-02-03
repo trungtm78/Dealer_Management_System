@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const testDrives = await prisma.testDrive.findMany({
       where,
       include: {
-        customer: {
+        Customer: {
           select: {
             id: true,
             name: true,
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
             email: true
           }
         },
-        salesConsultant: {
+        User: {
           select: {
             id: true,
             name: true,
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
         status: 'SCHEDULED'
       },
       include: {
-        customer: {
+        Customer: {
           select: {
             id: true,
             name: true,
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
             email: true
           }
         },
-        salesConsultant: {
+        User: {
           select: {
             id: true,
             name: true,

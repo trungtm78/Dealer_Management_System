@@ -8,8 +8,8 @@ import { ServiceAppointmentDTO, CreateAppointmentInput, UpdateAppointmentInput }
 function mapToDTO(a: any): ServiceAppointmentDTO {
     return {
         id: a.id,
-        customerId: a.customerId,
-        customerName: a.customer.name,
+        customerId: a.CustomerId,
+        customerName: a.Customer.name,
         vehicleInfo: a.vehicleInfo,
         appointmentDate: a.appointmentDate.toISOString(),
         appointmentTime: a.appointmentTime,
@@ -38,8 +38,8 @@ const appointments = await prisma.serviceAppointment.findMany({
             where,
             orderBy: { scheduled_date: 'asc' },
 include: {
-                customer: { select: { name: true } },
-                advisor: { select: { id: true, name: true } }
+                Customer: { select: { name: true } },
+                User: { select: { id: true, name: true } }
             }
         });
 
@@ -58,8 +58,8 @@ export async function getAppointment(id: string) {
 const appointment = await prisma.serviceAppointment.findUnique({
             where: { id },
 include: {
-                customer: { select: { name: true } },
-                advisor: { select: { id: true, name: true } }
+                Customer: { select: { name: true } },
+                User: { select: { id: true, name: true } }
             }
         });
         if (!appointment) return null;
@@ -86,8 +86,8 @@ const newAppointment = await prisma.serviceAppointment.create({
                 advisor_id: data.assignedToId || ''
             },
             include: {
-                customer: { select: { name: true } },
-                advisor: { select: { id: true, name: true } }
+                Customer: { select: { name: true } },
+                User: { select: { id: true, name: true } }
             }
         });
         revalidatePath('/service/appointments');
@@ -115,8 +115,8 @@ const updated = await prisma.serviceAppointment.update({
                 advisor_id: data.assignedToId
             },
             include: {
-                customer: { select: { name: true } },
-                advisor: { select: { id: true, name: true } }
+                Customer: { select: { name: true } },
+                User: { select: { id: true, name: true } }
             }
         });
         revalidatePath('/service/appointments');

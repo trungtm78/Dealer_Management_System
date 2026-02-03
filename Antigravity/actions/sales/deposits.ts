@@ -24,9 +24,9 @@ function mapToDTO(d: any): DepositDTO {
         paymentMethod: d.payment_method,
         status: d.status,
         createdAt: d.created_at.toISOString(),
-        receivedBy: d.receivedBy ? {
-            id: d.receivedBy.id,
-            name: d.receivedBy.name
+        receivedBy: d.User ? {
+            id: d.User.id,
+            name: d.User.name
         } : null
     }
 }
@@ -39,7 +39,7 @@ export async function getDeposits(query?: string) {
         const deposits = await prisma.deposit.findMany({
             orderBy: { created_at: 'desc' },
             include: {
-                receivedBy: { select: { id: true, name: true } }
+                User: { select: { id: true, name: true } }
             }
         });
         return deposits.map(mapToDTO);
@@ -57,7 +57,7 @@ export async function getDeposit(id: string) {
         const deposit = await prisma.deposit.findUnique({
             where: { id },
             include: {
-                receivedBy: { select: { id: true, name: true } }
+                User: { select: { id: true, name: true } }
             }
         });
         if (!deposit) return null;
@@ -118,7 +118,7 @@ const newDeposit = await prisma.deposit.create({
                 status: DepositStatus.PAID
 },
             include: {
-                receivedBy: { select: { id: true, name: true } }
+                User: { select: { id: true, name: true } }
             }
         });
         safeRevalidatePath('/sales/deposits');
@@ -138,7 +138,7 @@ export async function updateDepositStatus(id: string, status: DepositStatus) {
             where: { id },
             data: { status },
             include: {
-                receivedBy: { select: { id: true, name: true } }
+                User: { select: { id: true, name: true } }
             }
 });
         safeRevalidatePath('/sales/deposits');

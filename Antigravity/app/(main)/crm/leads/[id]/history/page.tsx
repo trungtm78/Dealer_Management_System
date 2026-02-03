@@ -16,7 +16,7 @@ export default async function LeadHistoryPage({ params }: { params: { id: string
     const lead = await prisma.lead.findUnique({
         where: { id: params.id },
         include: {
-            interactions: {
+            Interaction: {
                 orderBy: { created_at: 'desc' }
             }
         }
@@ -24,7 +24,7 @@ export default async function LeadHistoryPage({ params }: { params: { id: string
 
     if (!lead) return notFound()
 
-    const interactions = lead.interactions.map((i: any) => ({
+    const interactions = lead.Interaction.map((i: any) => ({
         ...i,
         createdAt: i.created_at.toISOString()
     }))

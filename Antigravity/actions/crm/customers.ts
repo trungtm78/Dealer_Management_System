@@ -54,14 +54,26 @@ export async function getCustomer(id: string) {
 
 export async function createCustomer(data: any) {
     try {
+        // Check for existing active customer with same phone
+        const existing = await prisma.customer.findFirst({
+            where: {
+                phone: data.phone,
+                status: { not: 'INACTIVE' }
+            }
+        });
+
+        if (existing) {
+            return { success: false, error: "Số điện thoại đã tồn tại trong hệ thống." };
+        }
+
         // ENUM Validation
         const { EnumValidator } = await import('@/middleware/enum_validation');
         const enumValidation = EnumValidator.validateObject('customers', data);
-        
+
         if (!enumValidation.valid) {
-            return { 
-                success: false, 
-                error: "Lỗi xác thực: " + enumValidation.errors.join("; ") 
+            return {
+                success: false,
+                error: "Lỗi xác thực: " + enumValidation.errors.join("; ")
             };
         }
 
@@ -166,32 +178,22 @@ export async function searchCustomers(query: string) {
 export async function convertLeadToCustomer(leadId: string) {
     try {
         const lead = await prisma.lead.findUnique({ where: { id: leadId } });
-        if (!lead) return { success: false, error: "Lead not found" };
+        if (!lead) return { success: false, error: "Lead không tồn tại trong hệ thống" };
 
         const existing = await prisma.customer.findFirst({
-            where: { phone: lead.phone }
+            where: {
+                OR: [
+                    { phone: lead.phone, status: { not: 'INACTIVE' } },
+                    { mobile: lead.phone, status: { not: 'INACTIVE' } }
+                ]
+            }
         });
 
         if (existing) {
-            await prisma.$transaction(async (tx: any) => {
-                await tx.customer.update({
-                    where: { id: existing.id },
-                    data: {
-                        notes: (existing.notes || "") + `\n[System] Re-linked from Lead: ${lead.model_interest || ''}. Date: ${new Date().toLocaleDateString()}`
-                    }
-                });
-
-                await tx.lead.update({
-                    where: { id: leadId },
-                    data: {
-                        status: 'WON',
-                    }
-                });
-            });
-
-            safeRevalidatePath("/crm/leads");
-            safeRevalidatePath("/crm/customers");
-            return { success: true, customerId: existing.id, message: "Đã liên kết với khách hàng hiện tại: " + existing.name };
+            return { 
+                success: false, 
+                error: "Số điện thoại đã tồn tại trong hệ thống. Không thể tạo khách hàng mới." 
+            };
         }
 
         const result = await prisma.$transaction(async (tx: any) => {
@@ -200,7 +202,7 @@ export async function convertLeadToCustomer(leadId: string) {
                     name: lead.name,
                     phone: lead.phone,
                     email: lead.email,
-                    type: (lead.customer_type?.toLowerCase() === 'company') ? 'COMPANY' : 'INDIVIDUAL',
+                    type: (lead.customer_type && lead.customer_type.toLowerCase() === 'company') ? 'COMPANY' : 'INDIVIDUAL',
                     street: lead.address,
                     notes: `Converted from Lead: ${lead.model_interest || ''} ${lead.model_version || ''}. Notes: ${lead.notes || ''}`,
                     tags: JSON.stringify(['CONVERTED_LEAD']),
@@ -215,10 +217,10 @@ export async function convertLeadToCustomer(leadId: string) {
                 data: {
                     status: 'WON',
                 }
-});
+            });
 
-        return newCustomer;
-    });
+            return newCustomer;
+        });
 
         safeRevalidatePath("/crm/leads");
         safeRevalidatePath("/crm/customers");

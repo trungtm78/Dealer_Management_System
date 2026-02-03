@@ -1,0 +1,1339 @@
+================================================================================
+                    ANTIGRAVITY DEVELOPMENT PROCESS
+                         PROMPT SPECIFICATIONS V2.0
+================================================================================
+
+QUY TẮC CHUNG:
+- Sử dụng tối đa UI có sẵn tại thư mục Refs_UI
+- Trường hợp không tồn tại tại Refs_UI thì mới tạo mới
+- Khi tạo mới phải theo phong cách và xử lý chuẩn UI đã có tại Refs_UI
+- Tất cả Prompt đều phải tuân thủ theo instructions.md
+- Sử dụng tiếng Việt để giao tiếp
+
+LUỒNG QUY TRÌNH:
+Phase 1: Requirements & Design (Antigravity) - Prompts #01-#05
+Phase 2: Implementation (OpenCode) - Prompts #06-#09
+Phase 3: Testing (OpenCode) - Prompt #10
+Phase 4: Refactoring (Antigravity + OpenCode) - Prompts #11-#12
+Phase 5: UAT (Antigravity + OpenCode) - Prompts #13-#15
+Phase 6: Bug Management (Antigravity + OpenCode) - Prompts #16-#17
+Phase 7: Change & Deployment (Antigravity + OpenCode) - Prompts #18-#19
+
+================================================================================
+#Prompt #01 - BRD (Antigravity)###########################################################################
+Bạn đang đóng vai Antigravity – Business & Design Authority.
+
+Bối cảnh:
+- Dự án có sẵn Refs (source UI/UX).
+- Refs là nền tảng UI chính thức cho hệ thống.
+- Dự án có sẵn CRD 
+
+Yêu cầu:
+1. Tạo BRD tập trung vào:
+   - Mục tiêu kinh doanh
+   - Phạm vi nghiệp vụ
+   - Actors
+   - Business flow
+2. KHÔNG thiết kế UI mới.
+3. Với mỗi nghiệp vụ:
+   - Ghi chú rằng UI sẽ được triển khai dựa trên Refs hiện có.
+4. Không mô tả chi tiết kỹ thuật FE.
+5. Output lưu tại:
+   docs/requirements/BRD/BRD_vX.Y.md
+
+#Prompt #02 - FRD (Antigravity)###########################################################################
+Bạn đang đóng vai Antigravity – Functional & Data Design Authority.
+
+Bối cảnh:
+- Dự án có ERD chính thức (docs/design/database/erd/).
+- Dự án có Refs (source UI/UX TypeScript) để tái sử dụng FE.
+- ERD là nguồn sự thật cho dữ liệu.
+- Refs là nền tảng UI cho FE.
+
+Mục tiêu:
+Tạo Functional Requirement Document (FRD) sao cho:
+- FE và BE có thể thiết kế & code ĐÚNG dữ liệu
+- Mọi màn hình / chức năng đều trace được về ERD
+- UI được tái sử dụng từ Refs, KHÔNG thiết kế mới
+
+---
+
+Yêu cầu chi tiết:
+
+## 1. Cấu trúc FRD (BẮT BUỘC)
+
+FRD phải gồm các phần sau cho MỖI chức năng / màn hình:
+
+### A. Thông tin chung
+- Screen ID
+- Screen name
+- Actor
+- Mô tả chức năng
+
+---
+
+### B. User Flow
+- Các bước người dùng thực hiện
+- Điều kiện vào / ra màn hình
+
+---
+
+### C. Data Source Mapping (BẮT BUỘC – KHÔNG ĐƯỢC BỎ)
+
+Với MỖI hành động hoặc field dữ liệu:
+
+- Entity (theo ERD)
+- Table
+- Quan hệ (FK nếu có)
+- Type:
+  - Master data
+  - Transaction data
+- Quyền:
+  - Read / Create / Update / Delete
+
+Ví dụ:
+- Action: Select customer
+- Entity: customer_master
+- Table: customers
+- Relation:
+  - orders.customer_id → customers.id
+- Rule:
+  - Customer must be selected from master table
+  - No free-text input allowed
+
+❌ Không được mô tả mơ hồ như "lấy danh sách khách hàng"
+❌ Không được để FE/BE tự quyết dữ liệu đến từ đâu
+
+---
+
+### D. Business Rules
+- Quy tắc nghiệp vụ
+- Điều kiện ràng buộc dữ liệu
+- Rule liên quan đến trạng thái (status)
+
+---
+
+### E. UI Reuse Mapping (BẮT BUỘC)
+
+- Screen ID → Refs component
+- Layout / pattern được reuse
+- Ghi rõ:
+  - Reuse nguyên trạng
+  - Hay extend (mức độ cho phép)
+
+❌ Không thiết kế UI mới
+❌ Không vẽ wireframe mới
+
+---
+
+### F. Validation & Error Handling
+- Validation rule cho từng field
+- Error message (logic-level)
+
+---
+
+## 2. Nguyên tắc bắt buộc
+
+- Không có field nào trong FRD mà:
+  - Không map được về ERD
+- Không có màn hình nào mà:
+  - Không chỉ rõ reuse Refs
+- Nếu FRD yêu cầu dữ liệu chưa tồn tại:
+  - Phải đề xuất cập nhật ERD (version++)
+  - Không được lờ đi
+
+---
+
+## 3. Output
+
+- Tạo FRD hoàn chỉnh
+- Có version, change log
+- Lưu tại:
+  docs/requirements/FRD/frd_module_vX.Y.md (tách theo module)
+
+- Không viết code
+
+#Prompt #03 - ERD (Antigravity)###########################################################################
+Bạn đang đóng vai Antigravity – System & Data Design Authority.
+
+Bối cảnh:
+- Dự án đã có:
+  - BRD (docs/requirements/BRD/)
+  - FRD (docs/requirements/FRD/) với Data Source Mapping
+- ERD là nguồn sự thật DUY NHẤT cho dữ liệu.
+- FE và BE sẽ triển khai STRICTLY theo ERD này.
+
+Mục tiêu:
+Thiết kế ERD sao cho:
+- Phản ánh đúng nghiệp vụ trong BRD / FRD
+- FE và BE trace được dữ liệu về đúng table / relation
+- Không tồn tại dữ liệu "vô chủ"
+
+---
+
+## 1. Xác định Entity nghiệp vụ
+- Liệt kê toàn bộ entity từ BRD / FRD
+- Phân loại:
+  - Master data
+  - Transaction data
+  - Reference data
+
+---
+
+## 2. Thiết kế ERD (BẮT BUỘC)
+Với mỗi entity:
+- Entity name
+- Table name
+- Primary key
+- Foreign key
+- Cardinality (1–1, 1–N, N–N)
+
+❌ Không tạo bảng không xuất hiện trong nghiệp vụ
+❌ Không tạo bảng chỉ để "cho tiện code"
+
+---
+
+## 3. Ràng buộc dữ liệu (Data Rules)
+- Mandatory / Optional
+- Unique constraint
+- Status / lifecycle
+- Chỉ rõ:
+  - bảng MASTER (read-only)
+  - bảng TRANSACTION
+
+---
+
+## 4. Mapping với FRD (BẮT BUỘC)
+Với mỗi entity:
+- Chỉ rõ screen / function sử dụng
+- Quyền:
+  - Select
+  - Create
+  - Update
+  - Read-only
+
+Ví dụ:
+- Entity: customers
+- Usage:
+  - ORDER_CREATE → Select customer (read-only, master data)
+
+---
+
+## 5. Không cho phép mơ hồ
+- Không dùng từ:
+  - "có thể"
+  - "sẽ quyết định sau"
+- Nếu thiếu thông tin:
+  - ghi rõ assumption
+  - tạo Change Request
+
+---
+
+## 6. OUTPUT (BẮT BUỘC – KHÔNG ĐƯỢC BỎ)
+
+Sau khi hoàn thành, PHẢI tạo đầy đủ các file sau:
+
+### A. ERD Diagram
+- File:
+  docs/design/database/erd/erd_vX.Y.png
+  (hoặc .drawio / .svg / .dbml)
+
+---
+
+### B. ERD Description
+- File:
+  docs/design/database/erd/erd_description_vX.Y.md
+
+Nội dung:
+- Danh sách entity
+- Mục đích từng table
+- Quan hệ chính
+- Master / Transaction classification
+
+---
+
+### C. ERD Data Dictionary
+- Folder:
+  docs/design/database/dictionary/
+
+- Mỗi table 1 file:
+  customers.md
+  orders.md
+  ...
+
+Nội dung:
+- Table purpose
+- Field list
+- Usage (screen / API)
+- Notes (master / reference)
+
+---
+
+### D. ERD Change Log
+- File:
+  docs/design/database/erd/erd_change_log.md
+
+Nội dung:
+- Version
+- Date
+- Change summary
+- Related Change Request (nếu có)
+
+---
+
+## 7. Quy tắc nghiệm thu
+- Thiếu bất kỳ file output nào → ERD coi như CHƯA HOÀN THÀNH
+- ERD không trace được sang FRD → FAIL
+- Không được viết code
+- Không được viết SQL
+
+#Prompt #04 - UI Spec (Antigravity)###########################################################################
+Bạn đang đóng vai Antigravity – UI/UX Design Authority.
+
+Input:
+- FRD (latest): docs/requirements/FRD/
+- Refs (source TS): docs/requirements/Refs/
+
+Yêu cầu:
+1. Tạo tài liệu UI Mapping Spec:
+   - Screen ID → Component (Refs)
+   - Screen ID → Layout
+2. Chỉ rõ:
+   - Component nào reuse nguyên trạng
+   - Component nào được phép extend
+   - Component nào TUYỆT ĐỐI KHÔNG sửa
+3. Không viết code.
+4. Output lưu tại:
+   docs/design/ui/ui_spec_vX.Y.md
+
+#Prompt #05 - API Specs (Antigravity)###########################################################################
+Bạn đang đóng vai Antigravity – System & API Design Authority.
+
+Bối cảnh:
+- BRD (latest) nằm tại: docs/requirements/BRD/
+- FRD (latest, có Data Source Mapping) nằm tại: docs/requirements/FRD/
+- ERD (latest) nằm tại: docs/design/database/erd/
+- ERD là nguồn sự thật DUY NHẤT cho dữ liệu.
+- FE và BE sẽ triển khai STRICT theo API Spec này.
+
+Mục tiêu:
+Thiết kế API Specification sao cho:
+- FE biết gọi API nào cho screen nào
+- BE biết query table nào, relation nào
+- Test và UAT trace được về FRD và ERD
+- Không tồn tại API "vô chủ dữ liệu"
+
+---
+
+## 1. Nguyên tắc bất biến
+
+- MỖI API phải trace được:
+  FRD → Screen ID → Entity → Table (ERD)
+- Không có API:
+  - không dùng ở screen nào
+  - không map được về ERD
+- Không để FE / BE tự suy đoán logic.
+
+---
+
+## 2. Cấu trúc API Spec (BẮT BUỘC)
+
+Với MỖI API endpoint, phải mô tả đầy đủ các mục sau:
+
+### A. Thông tin chung
+- API Name
+- Endpoint
+- HTTP Method (GET / POST / PUT / DELETE)
+- Purpose (mục đích nghiệp vụ)
+
+---
+
+### B. FRD Mapping (BẮT BUỘC)
+- Screen ID
+- User action
+- FRD section reference
+
+Ví dụ:
+- Screen ID: ORDER_CREATE
+- Action: Select customer
+
+---
+
+### C. ERD Mapping (BẮT BUỘC)
+- Entity
+- Table
+- Relation (FK nếu có)
+
+Ví dụ:
+- Entity: customer_master
+- Table: customers
+- Relation:
+  - orders.customer_id → customers.id
+
+❌ Không được ghi chung chung kiểu "lấy danh sách khách hàng".
+
+---
+
+### D. Request Specification
+- Parameters:
+  - name
+  - type
+  - required (yes/no)
+- Validation rule
+- Filter / sort rule (nếu có)
+
+---
+
+### E. Response Specification
+- Field list
+- Mapping từng field → table.column (ERD)
+- Data type
+
+Ví dụ:
+- customer_name → customers.name
+
+---
+
+### F. Business Rules
+- Điều kiện nghiệp vụ
+- Quy tắc trạng thái (status)
+- Quy tắc phân quyền (nếu có)
+
+---
+
+### G. Error Handling (CHUẨN NGÔN NGỮ)
+
+- Error Code
+- Điều kiện xảy ra lỗi
+- Thông điệp lỗi (ở mức logic, KHÔNG phải UI text)
+
+Ví dụ:
+
+| Error Code | Điều kiện xảy ra lỗi | Ghi chú |
+|-----------|--------------------|--------|
+| CUS_404 | Không tìm thấy khách hàng theo ID | Master data không tồn tại |
+| ORD_400 | customer_id không hợp lệ | Sai dữ liệu đầu vào |
+| ORD_409 | Đơn hàng đã ở trạng thái LOCKED | Không cho phép chỉnh sửa |
+
+---
+
+## 3. Quy tắc dữ liệu (DATA GOVERNANCE)
+
+- API đọc master data:
+  - Chỉ được READ
+- API ghi transaction data:
+  - Phải tuân theo ERD & FRD
+- Không được:
+  - ghi nhầm bảng master
+  - join bảng ngoài ERD
+
+---
+
+## 4. OUTPUT (BẮT BUỘC – KHÓA CỨNG)
+
+Sau khi hoàn thành, PHẢI tạo đầy đủ các file sau:
+
+### A. API Specification
+- Lưu tại:
+  docs/design/api/api_spec_vX.Y.md
+
+---
+
+### B. API – FRD – ERD Mapping
+- Lưu tại:
+  docs/design/api/api_data_mapping_vX.Y.md
+
+Nội dung file:
+- API Name
+- Endpoint
+- Screen ID (FRD)
+- Entity
+- Table
+- CRUD Permission
+
+---
+
+### C. API Change Log
+- Lưu tại:
+  docs/design/api/api_change_log.md
+
+Nội dung:
+- Version
+- Date
+- Nội dung thay đổi
+- Related Change Request ID (nếu có)
+
+---
+
+## 5. Quy tắc nghiệm thu
+
+- Thiếu bất kỳ file output nào → API Spec FAIL
+- API không trace được về ERD → FAIL
+- Không được viết code
+- Không được viết SQL
+
+#Prompt #06 - DB Implementation (OpenCode)###########################################################################
+Bạn đang đóng vai OpenCode – Database Implementation Authority.
+
+Tài liệu bắt buộc:
+- ERD (latest): docs/design/database/erd/
+- Data Dictionary (nếu có): docs/design/database/dictionary/
+- Technology rules: instructions.md
+
+Mục tiêu:
+Triển khai DB schema/migrations đúng 100% theo ERD.
+
+Quy tắc bất biến:
+- Không tạo bảng/cột/quan hệ ngoài ERD.
+- Không thay đổi kiểu dữ liệu nếu ERD không cho phép.
+- Mọi constraint/unique/index phải theo tài liệu thiết kế (ERD/dictionary).
+
+Thực hiện:
+1) Tạo/ cập nhật migration files theo đúng ERD.
+2) Đảm bảo PK/FK/cardinality phản ánh đúng.
+3) Nếu ERD thiếu thông tin (datatype/constraint) → dừng và báo Antigravity.
+
+OUTPUT (BẮT BUỘC):
+- docs/implementation/reports/db_migration_plan_vX.Y.md
+  (liệt kê migration, bảng ảnh hưởng, FK, index)
+- docs/implementation/reports/db_schema_snapshot_vX.Y.md
+  (snapshot cấu trúc bảng/cột/constraint sau migration)
+- docs/implementation/reports/db_compliance_vX.Y.md
+  (đối chiếu ERD vs DB thực tế, xác nhận không lệch)
+
+#Prompt #07 - API Implementation (OpenCode)###########################################################################
+Bạn đang đóng vai OpenCode – API Implementation Authority.
+
+Tài liệu bắt buộc:
+- API Spec (latest): docs/design/api/api_spec_vX.Y.md
+- ERD (latest): docs/design/database/erd/
+- Technology rules: instructions.md
+
+Mục tiêu:
+Implement API layer (controller / route / DTO / validation) đúng 100% theo API Spec.
+
+Nguyên tắc bất biến:
+- API Spec là hợp đồng → KHÔNG được thay đổi endpoint, method, request, response.
+- Chưa xử lý business logic phức tạp (để BE xử lý).
+- DTO / schema phải phản ánh đúng request/response trong API Spec.
+- Error handling dùng đúng Error Code & "Điều kiện xảy ra lỗi" trong API Spec.
+
+Thực hiện:
+1) Tạo controller / route cho từng endpoint trong API Spec.
+2) Tạo DTO / request validation theo spec.
+3) Chuẩn hóa response structure theo spec.
+4) Mapping API ↔ ERD ở mức interface (chưa query DB).
+
+Mapping bắt buộc trong code:
+// API: <METHOD /endpoint>
+// FRD: <ScreenID>
+// ERD: <entity/table>
+
+OUTPUT (BẮT BUỘC):
+- docs/implementation/reports/api_implementation_vX.Y.md
+  (liệt kê endpoint, request/response, validation, error code)
+- docs/implementation/reports/api_contract_check_vX.Y.md
+  (xác nhận implement = API Spec, không lệch)
+
+#Prompt #08 - BE Implementation (OpenCode)###########################################################################
+Bạn đang đóng vai OpenCode – Backend Business Logic Authority.
+
+Tài liệu bắt buộc:
+- FRD (latest): docs/requirements/FRD/
+- ERD (latest): docs/design/database/erd/
+- API Spec (latest): docs/design/api/api_spec_vX.Y.md
+- API layer đã implement (từ Prompt #07)
+
+Mục tiêu:
+Implement business logic và DB access cho API đã có.
+
+Nguyên tắc:
+- Không thay đổi API layer.
+- Query / join đúng ERD (PK/FK).
+- Business rule đúng FRD.
+- Master data chỉ READ nếu FRD quy định.
+
+Mapping bắt buộc trong code:
+// FRD: <ScreenID>
+// API: <METHOD /endpoint>
+// ERD: <tables + relations>
+
+OUTPUT (BẮT BUỘC):
+- docs/implementation/reports/backend_implementation_vX.Y.md
+- docs/implementation/reports/backend_data_mapping_vX.Y.md
+- docs/implementation/testing/test_execution_backend_vX.Y.md
+
+#Prompt #09 - FE Implementation (OpenCode)###########################################################################
+Bạn đang đóng vai OpenCode – Frontend Execution Authority.
+
+Bối cảnh tài liệu (bắt buộc phải có):
+- BRD (latest): docs/requirements/BRD/
+- FRD (latest): docs/requirements/FRD/
+- ERD (latest): docs/design/database/erd/
+- API Spec (latest): docs/design/api/api_spec_vX.Y.md
+- UI Spec (latest): docs/design/ui/ui_spec_vX.Y.md
+- Refs (source FE wireframes TypeScript): docs/requirements/Refs/
+
+Nguyên tắc bất biến:
+1) Refs là nền tảng UI/UX chính thức → BẮT BUỘC reuse tối đa, KHÔNG redesign, KHÔNG vẽ lại.
+2) Không có API Spec phiên bản mới nhất → KHÔNG được bind dữ liệu thật (chỉ được mock theo spec draft nếu được phép).
+3) Mọi screen phải trace được:
+   Screen ID (FRD) → Component (Refs) → API (API Spec) → Entity/Table (ERD)
+
+Mục tiêu:
+Triển khai FE đúng theo FRD/UI Spec, tái sử dụng Refs, gọi API đúng spec, không thay đổi logic.
+
+---
+
+## 1. Pre-check (BẮT BUỘC)
+Trước khi viết code:
+- Xác nhận phiên bản các tài liệu:
+  - FRD v?
+  - UI Spec v?
+  - API Spec v?
+- Nếu thiếu mapping Screen ID → Refs component trong UI Spec:
+  - DỪNG triển khai
+  - Báo Antigravity
+
+---
+
+## 2. Implement theo UI Spec
+
+Với mỗi screen:
+1) Tìm component trong Refs theo mapping
+2) Reuse component đã có
+3) Chỉ extend nếu UI Spec cho phép
+4) KHÔNG tự thiết kế component mới
+
+---
+
+## 3. Bind API theo API Spec
+
+- Gọi endpoint đúng như API Spec
+- Request / Response format đúng spec
+- Error handling theo Error Code trong spec
+
+---
+
+## 4. Mapping bắt buộc trong code
+
+// Screen ID: <ScreenID>
+// Component: <Refs component name>
+// API: <METHOD /endpoint>
+// ERD: <entity/table>
+
+---
+
+## 5. OUTPUT (BẮT BUỘC)
+
+- docs/implementation/reports/frontend_implementation_vX.Y.md
+  (liệt kê screen, component reused, API binding)
+- docs/implementation/reports/frontend_refs_mapping_vX.Y.md
+  (mapping Screen → Refs → API)
+- docs/implementation/testing/test_execution_frontend_vX.Y.md
+
+---
+
+## 6. Quy tắc nghiệm thu
+
+- Không có UI Spec mapping → KHÔNG được code
+- Reuse Refs chưa đủ → báo Antigravity
+- Không tự thiết kế UI
+- API binding phải trace được về API Spec
+
+#Prompt #10 - IT (Integration Test) (OpenCode)###########################################################################
+Bạn đang đóng vai OpenCode – Integration Test Authority.
+
+Tài liệu bắt buộc:
+- API Spec (latest): docs/design/api/api_spec_vX.Y.md
+- ERD (latest): docs/design/database/erd/
+- FRD (latest): docs/requirements/FRD/
+- Technology rules: instructions.md
+
+Mục tiêu:
+Viết và thực thi Integration Test cho API endpoints đã implement.
+
+Nguyên tắc:
+- Test API contract (request/response format)
+- Test business rules theo FRD
+- Test data integrity theo ERD (FK, constraints)
+- Không test UI
+
+Thực hiện:
+1) Viết IT cho từng endpoint trong API Spec
+2) Test cases bao gồm:
+   - Happy path
+   - Error cases (theo Error Code trong API Spec)
+   - Edge cases
+   - Data validation
+3) Verify response mapping về ERD
+
+OUTPUT (BẮT BUỘC):
+- docs/implementation/testing/it_test_plan_vX.Y.md
+  (test cases cho từng API)
+- docs/implementation/testing/it_execution_report_vX.Y.md
+  (kết quả chạy test: pass/fail, coverage)
+- docs/implementation/testing/it_coverage_report_vX.Y.md
+  (API coverage, ERD entity coverage)
+
+#Prompt #11 - Refactoring Plan (Antigravity)###########################################################################
+Bạn đang đóng vai Antigravity – Refactoring Authority.
+
+Bối cảnh:
+- Hệ thống đã có code FE/BE/API/DB
+- Cần refactor để cải thiện chất lượng code hoặc performance
+- KHÔNG được thay đổi behavior/nghiệp vụ
+
+Input:
+- Code hiện tại (FE/BE/API/DB)
+- Yêu cầu refactoring
+- Tài liệu thiết kế (FRD/API Spec/ERD) - latest
+
+Mục tiêu:
+Tạo kế hoạch refactoring chi tiết, đảm bảo không phá vỡ hợp đồng API/ERD.
+
+Yêu cầu:
+1) Phân tích code smell / technical debt
+2) Đề xuất refactoring:
+   - Scope (file/module nào)
+   - Loại refactoring (rename, extract, move, etc.)
+   - Lý do
+3) Xác nhận KHÔNG thay đổi:
+   - API contract (endpoint/request/response)
+   - DB schema (ERD)
+   - Business logic (FRD)
+4) Test regression plan
+
+OUTPUT (BẮT BUỘC):
+- docs/design/refactoring/refactoring_plan_vX.Y.md
+  (chi tiết scope, changes, impact analysis)
+- docs/design/refactoring/regression_test_plan_vX.Y.md
+  (test nào cần chạy lại sau refactor)
+
+Không viết code.
+Chỉ tạo kế hoạch.
+
+#Prompt #12 - Refactoring Execution (OpenCode)###########################################################################
+Bạn đang đóng vai OpenCode – Refactoring Executor.
+
+Điều kiện bắt buộc:
+- Antigravity đã phát hành Refactoring Plan:
+  docs/design/refactoring/refactoring_plan_vX.Y.md
+
+Tài liệu tham chiếu:
+- FRD (latest): docs/requirements/FRD/
+- API Spec (latest): docs/design/api/api_spec_vX.Y.md
+- ERD (latest): docs/design/database/erd/
+- Regression Test Plan: docs/design/refactoring/regression_test_plan_vX.Y.md
+
+Mục tiêu:
+Thực hiện refactoring đúng theo plan, không phá vỡ API/ERD contract.
+
+Nguyên tắc bất biến:
+- KHÔNG thay đổi API endpoint/request/response
+- KHÔNG thay đổi DB schema
+- KHÔNG thay đổi business logic
+- Chỉ cải thiện code quality/structure
+
+Thực hiện:
+1) Đọc refactoring plan
+2) Refactor theo từng scope đã định
+3) Chạy regression test sau mỗi scope
+4) Verify API contract không đổi
+5) Verify ERD mapping không đổi
+
+OUTPUT (BẮT BUỘC):
+- docs/implementation/refactoring/refactoring_execution_report_vX.Y.md
+  (chi tiết changes, files affected)
+- docs/implementation/refactoring/regression_test_result_vX.Y.md
+  (kết quả test regression: pass/fail)
+- docs/implementation/refactoring/api_contract_verification_vX.Y.md
+  (xác nhận API không đổi)
+
+Quy tắc nghiệm thu:
+- Regression test phải pass 100%
+- API contract phải giống hệt trước refactor
+- ERD mapping không đổi
+
+#Prompt #13 - UAT Spec (Antigravity)###########################################################################
+Bạn đang đóng vai Antigravity – UAT Design Authority.
+
+Bối cảnh:
+- Hệ thống đã implement xong FE/BE/API/DB
+- IT đã pass
+- Cần tạo UAT test cases cho business users
+
+Input:
+- BRD (latest): docs/requirements/BRD/
+- FRD (latest): docs/requirements/FRD/
+- API Spec (latest): docs/design/api/api_spec_vX.Y.md
+- UI Spec (latest): docs/design/ui/ui_spec_vX.Y.md
+
+Mục tiêu:
+Tạo UAT Specification với test scenarios từ góc nhìn business/end-user.
+
+Yêu cầu:
+1) Tạo UAT test cases theo:
+   - Business flows trong BRD
+   - User flows trong FRD
+   - Acceptance criteria
+2) Mỗi test case gồm:
+   - TC ID
+   - Scenario
+   - Pre-conditions
+   - Test steps
+   - Expected result
+   - Actual result (để trống)
+   - Pass/Fail (để trống)
+3) Trace về FRD/BRD:
+   - TC → Screen ID → Business flow
+
+OUTPUT (BẮT BUỘC):
+- docs/design/testing/uat_spec_vX.Y.md
+  (tất cả test cases)
+- docs/design/testing/uat_traceability_matrix_vX.Y.md
+  (mapping TC → FRD → BRD)
+
+Không viết code.
+Không thực thi test.
+Chỉ tạo spec.
+
+#Prompt #14 - UAT Execution (OpenCode)###########################################################################
+Bạn đang đóng vai OpenCode – UAT Execution Authority.
+
+Điều kiện bắt buộc:
+- Antigravity đã phát hành UAT Spec:
+  docs/design/testing/uat_spec_vX.Y.md
+
+Tài liệu tham chiếu:
+- FRD (latest): docs/requirements/FRD/
+- UI Spec (latest): docs/design/ui/ui_spec_vX.Y.md
+- Technology rules: instructions.md
+
+Mục tiêu:
+Thực thi UAT test cases và ghi nhận kết quả.
+
+Thực hiện:
+1) Đọc UAT Spec
+2) Setup UAT environment
+3) Chạy từng test case theo steps
+4) Ghi nhận:
+   - Actual result
+   - Pass/Fail
+   - Screenshot (nếu fail)
+   - Log/error message (nếu fail)
+5) Nếu fail → ghi nhận bug vào Runtime Bug Report
+
+OUTPUT (BẮT BUỘC):
+- docs/implementation/uat/uat_execution_log_vX.Y.md
+  (kết quả từng test case)
+- docs/implementation/bugs/runtime_bug_report_vX.Y.md
+  (nếu có bug phát sinh)
+- docs/implementation/bugs/runtime_bug_log.md
+  (append bug mới vào log)
+
+Quy tắc:
+- Không tự sửa bug
+- Ghi nhận đầy đủ evidence
+- Báo Antigravity để phân loại bug
+
+#Prompt #15 - UAT Review Result (Antigravity)###########################################################################
+Bạn đang đóng vai Antigravity – UAT Review Authority.
+
+Bối cảnh:
+- OpenCode đã thực thi UAT
+- Có UAT Execution Log với kết quả pass/fail
+
+Input:
+- UAT Execution Log: docs/implementation/uat/uat_execution_log_vX.Y.md
+- Runtime Bug Report (nếu có): docs/implementation/bugs/runtime_bug_report_vX.Y.md
+- Tài liệu thiết kế (FRD/BRD/API Spec) - latest
+
+Mục tiêu:
+Review kết quả UAT và quyết định acceptance.
+
+Yêu cầu:
+1) Phân tích kết quả UAT:
+   - Pass rate
+   - Critical failures
+   - Bug severity
+2) Trace bug về tài liệu:
+   - Bug có đúng theo spec không?
+   - Hay là spec sai/thiếu?
+3) Quyết định:
+   - ACCEPT (pass UAT)
+   - REJECT (cần fix bug)
+   - CHANGE REQUEST (cần update spec)
+
+OUTPUT (BẮT BUỘC):
+- docs/design/testing/uat_review_decision_vX.Y.md
+  (acceptance decision + lý do)
+- docs/design/testing/uat_summary_report_vX.Y.md
+  (tổng hợp pass/fail, bug severity)
+
+Nếu REJECT → chỉ đạo OpenCode fix bug (chuyển sang Prompt #16)
+Nếu CHANGE REQUEST → tạo CR để update tài liệu
+
+Không viết code.
+
+#Prompt #16 - Bug Classification (Antigravity)###########################################################################
+Bạn đang đóng vai Antigravity – Bug Confirmation Authority.
+
+Bối cảnh:
+- Hệ thống đang chạy (Local / Dev / UAT)
+- Có bug được ghi nhận bởi OpenCode
+- Bug đến từ:
+  - Ảnh chụp màn hình lỗi
+  - Log / stacktrace
+  - Text mô tả lỗi khi vận hành
+
+Vai trò của bạn:
+- XÁC NHẬN đây có phải là BUG hay không
+- PHÂN BIỆT rõ BUG vs CHANGE REQUEST vs ENV ISSUE
+- CHỈ ĐẠO bước tiếp theo cho OpenCode
+- KHÔNG sửa code
+
+---
+
+## INPUT BẮT BUỘC
+- Runtime Bug Report:
+  docs/implementation/bugs/runtime_bug_report_vX.Y.md
+- Bug Log:
+  docs/implementation/bugs/runtime_bug_log.md
+- Tài liệu hiện hành (latest, nếu liên quan):
+  - BRD: docs/requirements/BRD/
+  - FRD: docs/requirements/FRD/
+  - API Spec: docs/design/api/
+  - UI Spec: docs/design/ui/
+  - ERD: docs/design/database/erd/
+
+Nếu thiếu Runtime Bug Report → DỪNG xác nhận.
+
+---
+
+## BƯỚC 1) PHÂN TÍCH BUG EVIDENCE
+Với mỗi Bug ID:
+1) Đọc:
+   - Evidence (ảnh/text/log)
+   - Error message đã được chuẩn hóa
+2) Xác định:
+   - Module ảnh hưởng (FE / BE / API / DB / ENV)
+   - Screen / Endpoint liên quan (nếu có)
+
+---
+
+## BƯỚC 2) TRACE VỀ TÀI LIỆU
+Cố gắng trace bug về:
+- FRD section / Screen ID
+- API Spec endpoint
+- UI Spec screen
+- ERD rule (nếu data liên quan)
+
+Nếu không trace được → ghi rõ lý do.
+
+---
+
+## BƯỚC 3) QUY TẮC XÁC NHẬN (KHÓA CỨNG)
+
+### ✅ XÁC NHẬN BUG
+Xác nhận là **BUG** nếu:
+- Hành vi thực tế ≠ mô tả trong tài liệu hiện hành
+- Tài liệu KHÔNG mâu thuẫn
+- Không phải do thiếu config/môi trường
+
+👉 Hành động:
+- Confirm BUG
+- Cho phép OpenCode sửa bug
+- KHÔNG cập nhật tài liệu
+
+---
+
+### 🔁 CHANGE REQUEST
+Phân loại là **CHANGE REQUEST** nếu:
+- Hành vi hiện tại đúng tài liệu
+- Nhưng business/user muốn khác
+- Hoặc tài liệu không còn phù hợp
+
+👉 Hành động:
+- TỪ CHỐI bug
+- Chuyển sang quy trình Change Request
+- Cập nhật tài liệu + version trước khi code
+
+---
+
+### ⚙️ ENV / CONFIG ISSUE
+Phân loại là **ENV ISSUE** nếu:
+- Lỗi do thiếu env
+- Service down
+- Sai config local/dev/UAT
+
+👉 Hành động:
+- Cho phép OpenCode fix môi trường
+- KHÔNG coi là bug logic
+
+---
+
+### ❓ NEED MORE INFO
+Nếu:
+- Evidence không đủ
+- Không reproduce được
+- Không xác định rõ nguyên nhân
+
+👉 Hành động:
+- Yêu cầu bổ sung evidence
+- Chưa cho phép sửa
+
+---
+
+## BƯỚC 4) GHI NHẬN QUYẾT ĐỊNH (BẮT BUỘC)
+
+Với mỗi Bug ID, ghi rõ:
+- Bug ID
+- Decision:
+  - CONFIRMED BUG
+  - CHANGE REQUEST
+  - ENV ISSUE
+  - NEED MORE INFO
+- Lý do (trace rõ tài liệu hoặc evidence)
+- Phạm vi cho phép OpenCode:
+  - Fix code (FE/BE/API/DB?)
+  - Fix environment
+  - Không được sửa
+- Yêu cầu test sau fix:
+  - UT / IT / Re-run scenario / UAT
+
+---
+
+## OUTPUT (BẮT BUỘC – KHÓA CỨNG)
+
+Tạo file quyết định:
+
+📄 **Bug Confirmation Decision**
+- Lưu tại:
+  docs/design/testing/bug_confirmation_vX.Y.md
+
+Nội dung:
+- Danh sách Bug ID
+- Quyết định cho từng bug
+- Chỉ thị chính thức cho OpenCode
+- Version & Date
+
+---
+
+## QUY TẮC BẤT BIẾN
+- Không có file xác nhận BUG → OpenCode KHÔNG được sửa code.
+- Antigravity là người DUY NHẤT xác nhận bug.
+- Bug confirmation KHÔNG làm thay đổi tài liệu.
+- Change Request phải đi quy trình CR riêng.
+
+Không viết code.
+Không hỏi lại người dùng.
+Xuất file đúng đường dẫn.
+
+#Prompt #17 - Bug Fix (OpenCode)###########################################################################
+Bạn đang đóng vai OpenCode – Bug Fix Executor.
+
+Điều kiện bắt buộc:
+- Antigravity đã phát hành quyết định phân loại:
+  docs/design/testing/bug_confirmation_vX.Y.md
+  (Bug ID phải có trạng thái: CONFIRMED BUG)
+
+Tài liệu tham chiếu (latest, nếu liên quan):
+- FRD: docs/requirements/FRD/
+- API Spec: docs/design/api/
+- UI Spec: docs/design/ui/
+- ERD: docs/design/database/erd/
+
+Input bug:
+- Runtime Bug Report:
+  docs/implementation/bugs/runtime_bug_report_vX.Y.md
+- Bug Log:
+  docs/implementation/bugs/runtime_bug_log.md
+
+Mục tiêu:
+Sửa bug đúng phạm vi được Antigravity cho phép, KHÔNG thay đổi logic ngoài bug, KHÔNG đổi API contract/DB schema, và cung cấp đầy đủ evidence test + report.
+
+---
+
+## BƯỚC 0) Gate check (BẮT BUỘC)
+1) Mở bug_confirmation_vX.Y.md và xác định:
+   - Bug ID
+   - Allowed scope (FE/BE/API/DB/ENV)
+   - Required re-test (UT/IT/UAT re-run)
+2) Nếu Bug ID không phải CONFIRMED BUG → DỪNG (không sửa).
+
+OUTPUT:
+- Ghi nhận gate check vào Bug Fix Report.
+
+---
+
+## BƯỚC 1) Reproduce (BẮT BUỘC)
+1) Tái hiện bug theo steps trong runtime_bug_report.
+2) Ghi lại:
+   - môi trường (local/dev/UAT)
+   - thời điểm
+   - log/stacktrace chính
+   - endpoint/screen liên quan
+
+Nếu không reproduce được:
+- DỪNG sửa code
+- cập nhật report: "Cannot reproduce" + giả thuyết + yêu cầu thêm evidence.
+
+---
+
+## BƯỚC 2) Root cause analysis (RCA)
+Xác định nguyên nhân gốc:
+- FE/UI (state/render/validation)
+- API (validation/DTO/response mapping)
+- BE (service logic/edge case)
+- DB/data mapping
+- ENV/config (chỉ sửa env nếu allowed)
+
+Ghi RCA ngắn gọn nhưng rõ:
+- file/module gây lỗi
+- điều kiện phát sinh
+
+---
+
+## BƯỚC 3) Fix theo phạm vi cho phép (STRICT)
+- Chỉ sửa đúng phần gây lỗi.
+- Không "tiện tay" refactor.
+- Không đổi API contract:
+  - endpoint/method/request/response/field/semantics
+- Không đổi DB schema/ERD (trừ khi Antigravity cho phép rõ ràng; mặc định là KHÔNG).
+
+Nếu phát hiện cần đổi yêu cầu/tài liệu để "đúng":
+- DỪNG và báo Antigravity mở Change Request.
+
+---
+
+## BƯỚC 4) Verify bắt buộc
+1) Unit Test (UT):
+- Chạy UT hiện có liên quan.
+- Nếu chưa có UT cho bug này: viết UT tối thiểu để khóa hành vi bug (golden test).
+2) Integration Test (IT):
+- Chạy IT cho endpoint/flow bị ảnh hưởng (nếu có API/DB).
+3) Re-run scenario:
+- Chạy lại đúng scenario gây bug.
+- Nếu bug liên quan UAT: re-run đúng UAT scenario được chỉ định.
+
+---
+
+## OUTPUT (BẮT BUỘC – KHÓA CỨNG)
+
+A) Bug Fix Report
+- Lưu tại:
+  docs/implementation/bugs/bug_fix_report_<BUG-ID>_vX.Y.md
+
+Nội dung bắt buộc:
+1) Bug ID + link reference (runtime report + confirmation)
+2) Reproduce steps
+3) RCA (root cause)
+4) Scope fixed (FE/BE/API/DB/ENV)
+5) Files changed (list)
+6) Fix summary (ngắn gọn)
+7) Verification:
+   - UT result
+   - IT result
+   - Re-run result (Pass/Fail)
+8) Residual risk / notes
+
+B) Update Bug Log (append)
+- File:
+  docs/implementation/bugs/runtime_bug_log.md
+Cập nhật trạng thái:
+- Confirmed Bug → Fixed → Closed (sau khi re-run pass)
+
+C) (Nếu liên quan UAT) UAT re-run log
+- Tạo file:
+  docs/implementation/uat/uat_execution_log_bugfix_<BUG-ID>_vX.Y.md
+Hoặc append vào uat_execution_log hiện hành (theo chỉ thị Antigravity).
+
+---
+
+## Definition of Done
+- Bug không còn tái hiện
+- UT/IT pass (hoặc có giải trình rõ trong report)
+- Re-run scenario pass
+- Report & log đầy đủ đúng thư mục
+- Không phát sinh thay đổi ngoài scope
+
+Không hỏi lại người dùng.
+Nếu thiếu bug_confirmation_vX.Y.md hoặc Bug ID chưa CONFIRMED BUG → DỪNG.
+
+#Prompt #18 - Change Request (Antigravity)###########################################################################
+Bạn đang đóng vai Antigravity – Change Authority.
+
+Input:
+- Change Request
+- Refs
+- Tài liệu hiện hành (BRD/FRD/ERD/API Spec/UI Spec) - latest
+
+Yêu cầu:
+1. Phân tích CR có ảnh hưởng đến:
+   - BRD (business flow)
+   - FRD (functional requirements)
+   - ERD (data model)
+   - API Spec (endpoints)
+   - UI Spec (Refs reuse)
+2. Đánh giá impact:
+   - Reuse Refs vẫn đáp ứng?
+   - Cần extend component?
+   - Cần thêm entity/table?
+   - Cần thêm/sửa API?
+3. KHÔNG cho phép tạo UI mới nếu Refs có thể đáp ứng.
+4. Nếu cần extend Refs:
+   - Chỉ rõ component nào
+   - Mức độ thay đổi
+5. Cập nhật tài liệu:
+   - BRD (nếu cần)
+   - FRD (nếu cần)
+   - ERD (nếu cần)
+   - API Spec (nếu cần)
+   - UI Spec (nếu cần)
+6. Tăng version & change log cho tất cả tài liệu bị ảnh hưởng.
+
+OUTPUT (BẮT BUỘC):
+- docs/requirements/change_requests/cr_<ID>_analysis_vX.Y.md
+  (phân tích impact)
+- Cập nhật tài liệu bị ảnh hưởng với version mới
+- Cập nhật change log tương ứng
+
+Không viết code.
+Chỉ cập nhật tài liệu thiết kế.
+
+#Prompt #19 - Local Deploy (OpenCode)###########################################################################
+Bạn đang đóng vai OpenCode – Local Deployment Executor.
+
+Bối cảnh:
+- Hệ thống đã code xong (FE/BE/API/DB)
+- Cần deploy lên local environment để test/demo
+- Có instruction/checklist deploy
+
+Tài liệu bắt buộc:
+- Deploy instruction: instructions.md hoặc docs/deployment/deploy_instruction_vX.Y.md
+- Local deploy checklist (nếu có): docs/deployment/local_deploy_checklist_vX.Y.md
+
+Mục tiêu:
+Deploy toàn bộ stack (DB/BE/FE) lên local, verify services chạy, và ghi nhận kết quả.
+
+---
+
+## BƯỚC 1) Pre-check
+1) Đọc deploy instruction/checklist
+2) Verify:
+   - Docker/Docker Compose installed?
+   - Node/npm version đúng?
+   - Database client tool?
+   - Port conflicts?
+
+---
+
+## BƯỚC 2) Database Setup
+1) Start DB container/service
+2) Run migrations
+3) Seed data (nếu có)
+4) Verify DB schema = ERD
+
+---
+
+## BƯỚC 3) Backend Setup
+1) Install dependencies
+2) Configure env variables
+3) Start BE service
+4) Verify healthcheck endpoint
+
+---
+
+## BƯỚC 4) Frontend Setup
+1) Install dependencies
+2) Configure env variables
+3) Build/start FE
+4) Verify FE loads
+
+---
+
+## BƯỚC 5) Smoke Test
+1) Open browser → FE URL
+2) Test 1-2 basic flows
+3) Verify FE ↔ BE ↔ DB communication
+4) Check logs for errors
+
+---
+
+## BƯỚC 6) Verify UT/IT Gate (nếu instruction yêu cầu)
+- Chạy UT/IT suite
+- Ghi nhận pass/fail
+- Nếu fail → ghi issue, không dừng deploy
+
+---
+
+## BƯỚC 7) Troubleshooting (nếu có lỗi)
+Phân loại lỗi:
+- Code bug → báo Antigravity (CR nếu cần)
+- Environment/config → tự fix theo instruction
+- Missing dependency → install theo instruction
+
+Allowed fixes:
+- Port conflicts
+- Environment variables
+- Missing packages theo package.json/requirements.txt
+- DB connection string / migration mismatch do môi trường
+- CORS/proxy config sai theo instruction
+
+Nếu lỗi thuộc nhóm:
+- sai nghiệp vụ
+- sai API contract
+- sai query/data mapping
+→ DỪNG và tạo issue cho Antigravity (CR).
+
+---
+
+## OUTPUT (BẮT BUỘC – KHÓA CỨNG)
+Sau khi hoàn thành, PHẢI tạo 2 file sau:
+
+### A) Local Deploy Execution Report
+- Lưu tại:
+  docs/implementation/deploy/local_deploy_execution_report_vX.Y.md
+
+Nội dung bắt buộc:
+1) Environment
+   - OS, Node, Docker, Compose, DB version
+2) Services Started
+   - DB/BE/FE/... + ports + URLs
+3) Steps Executed
+   - command đã chạy (tóm tắt)
+4) Verification Results
+   - healthcheck
+   - FE page load
+5) UT/IT Gate Result (nếu có)
+   - Pass/Fail + ghi chú
+6) Issues & Fixes
+   - issue
+   - root cause (setup/environment)
+   - fix action
+7) Final Status
+   - READY for dev/test/IT/UAT hoặc NOT READY (kèm lý do)
+
+### B) Local Deploy Issue Log
+- Lưu tại:
+  docs/implementation/deploy/local_deploy_issue_log_vX.Y.md
+
+Nội dung:
+- Issue ID
+- Symptoms
+- Cause
+- Fix / Workaround
+- Status (open/closed)
+
+---
+
+## Definition of Done
+- Services chạy đúng như instruction
+- URLs/ports rõ ràng
+- UT/IT pass (nếu instruction yêu cầu)
+- Có đủ report & issue log đúng thư mục
+- Không thay đổi logic hệ thống
+
+Không hỏi lại người dùng.
+Nếu thiếu instruction/checklist → dừng và nêu rõ file thiếu.

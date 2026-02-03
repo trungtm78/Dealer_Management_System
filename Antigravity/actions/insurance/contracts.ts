@@ -10,16 +10,16 @@ function mapToDTO(c: any): InsuranceContractDTO {
         id: c.id,
         contract_number: c.contract_number,
         customer_id: c.customer_id,
-        customer_name: c.customer?.name,
-        customer_phone: c.customer?.phone,
-        vehicle_vin: c.vehicle_vin,
+        customer_name: c.Customer?.name,
+        customer_phone: c.Customer?.phone,
+        vehicle_vin: c.vehicle_id,
         provider: c.insurance_company,
         type: c.insurance_type,
         premium_amount: c.premium_amount,
         start_date: c.start_date.toISOString().split('T')[0],
         end_date: c.end_date.toISOString().split('T')[0],
         status: c.status,
-        claims: c.claims, // TODO: Map claims if needed detail
+        claims: c.InsuranceClaim, // TODO: Map claims if needed detail
         created_at: c.created_at.toISOString()
     }
 }
@@ -32,8 +32,8 @@ export async function getInsuranceContracts(query?: string) {
         const contracts = await prisma.insuranceContract.findMany({
             orderBy: { created_at: 'desc' },
             include: {
-                customer: { select: { name: true, phone: true } },
-                claims: true
+                Customer: { select: { name: true, phone: true } },
+                InsuranceClaim: true
             }
         });
         return contracts.map(mapToDTO);
@@ -51,8 +51,8 @@ export async function getInsuranceContract(id: string) {
         const contract = await prisma.insuranceContract.findUnique({
             where: { id },
             include: {
-                customer: { select: { name: true, phone: true } },
-                claims: true
+                Customer: { select: { name: true, phone: true } },
+                InsuranceClaim: true
             }
         });
         if (!contract) return null;
@@ -88,7 +88,7 @@ const newContract = await prisma.insuranceContract.create({
                 created_by_id: 'admin' // TODO: Get from session
             },
             include: {
-                customer: { select: { name: true, phone: true } }
+                Customer: { select: { name: true, phone: true } }
             }
         });
         revalidatePath('/insurance/contracts');
@@ -108,7 +108,7 @@ export async function updateInsuranceContract(id: string, data: CreateContractIn
             where: { id },
             data: { ...data },
             include: {
-                customer: { select: { name: true, phone: true } }
+                Customer: { select: { name: true, phone: true } }
             }
         });
         revalidatePath('/insurance/contracts');

@@ -5,8 +5,8 @@ export async function GET(req: NextRequest) {
     try {
         const quotations = await prisma.quotation.findMany({
             include: {
-                customer: true,
-                createdBy: {
+                Customer: true,
+                User: {
                     select: {
                         id: true,
                         name: true,
@@ -49,8 +49,8 @@ export async function POST(req: NextRequest) {
                 status: "DRAFT"
             },
             include: {
-                customer: true,
-                createdBy: {
+                Customer: true,
+                User: {
                     select: {
                         id: true,
                         name: true,

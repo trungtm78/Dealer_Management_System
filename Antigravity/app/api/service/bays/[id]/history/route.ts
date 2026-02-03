@@ -6,14 +6,14 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         const { searchParams } = new URL(req.url);
         const limit = Number(searchParams.get('limit')) || 20;
 
-        const history = await prisma.bayStatusLog.findMany({
+        const history = await prisma.bay_status_logs.findMany({
             where: { bay_id: params.id },
             include: {
-                changedBy: { select: { id: true, name: true } },
-                assignment: {
+                User: { select: { id: true, name: true } },
+                bay_assignments: {
                     include: {
-                        repairOrder: {
-                            include: { customer: true }
+                        RepairOrder: {
+                            include: { Customer: true }
                         }
                     }
                 }

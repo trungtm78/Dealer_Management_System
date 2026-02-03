@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const campaigns = await prisma.marketingCampaign.findMany({
       where,
       include: {
-        createdBy: {
+        User: {
           select: {
             id: true,
             name: true,
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
         status: 'DRAFT'
       },
       include: {
-        createdBy: {
+        User: {
           select: {
             id: true,
             name: true,

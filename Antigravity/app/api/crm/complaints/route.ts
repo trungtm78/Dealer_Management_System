@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const complaints = await prisma.complaint.findMany({
       where,
       include: {
-        customer: {
+        Customer: {
           select: {
             id: true,
             name: true,
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
             email: true
           }
         },
-        assignedTo: {
+        User: {
           select: {
             id: true,
             name: true,
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
         status: 'NEW'
       },
       include: {
-        customer: {
+        Customer: {
           select: {
             id: true,
             name: true,
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
             email: true
           }
         },
-        assignedTo: {
+        User: {
           select: {
             id: true,
             name: true,

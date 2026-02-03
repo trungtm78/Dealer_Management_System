@@ -10,7 +10,7 @@ export default defineConfig({
         environment: 'jsdom',
         globals: true,
         setupFiles: ['./tests/setup.ts'],
-        exclude: ['**/node_modules/**', '**/dist/**', '**/*.spec.ts', 'tests/e2e/**', 'tests/login.spec.ts'],
+        exclude: ['**/node_modules/**', '**/dist/**', 'tests/e2e/**', 'tests/login.spec.ts'],
         alias: {
             '@': path.resolve(__dirname, './'),
         },

@@ -24,18 +24,18 @@ function mapToDTO(p: any): PDSDTO {
         completedAt: p.completed_at ? p.completed_at.toISOString() : null,
         createdAt: p.created_at.toISOString(),
         updatedAt: p.updated_at.toISOString(),
-        contract: p.contract ? {
-            id: p.contract.id,
-            contractNumber: p.contract.contract_number
+        contract: p.Contract ? {
+            id: p.Contract.id,
+            contractNumber: p.Contract.contract_number
         } : undefined,
-        vin: p.vin ? {
-            id: p.vin.id,
-            model: p.vin.model,
-            color: p.vin.color
+        vin: p.Vin ? {
+            id: p.Vin.id,
+            model: p.Vin.model,
+            color: p.Vin.color
         } : undefined,
-        inspector: p.inspector ? {
-            id: p.inspector.id,
-            name: p.inspector.name
+        inspector: p.User ? {
+            id: p.User.id,
+            name: p.User.name
         } : undefined
     }
 }
@@ -48,7 +48,7 @@ export async function getPDSList(query?: string) {
         const list = await prisma.pDSChecklist.findMany({
             orderBy: { created_at: 'desc' },
             include: {
-                inspector: { select: { id: true, name: true } }
+                User: { select: { id: true, name: true } }
             }
         });
         return list.map(mapToDTO);
@@ -66,7 +66,7 @@ export async function getPDS(id: string) {
         const pds = await prisma.pDSChecklist.findUnique({
             where: { id },
             include: {
-                inspector: { select: { id: true, name: true } }
+                User: { select: { id: true, name: true } }
             }
         });
         if (!pds) return null;
@@ -124,9 +124,9 @@ export async function createPDS(data: CreatePDSInput) {
                 inspector_id: data.inspectorId
             },
             include: {
-                inspector: { select: { id: true, name: true } },
-                contract: true,
-                vin: true
+                User: { select: { id: true, name: true } },
+                Contract: true,
+                Vin: true
             }
         });
         revalidatePath('/sales/pds');
@@ -152,7 +152,7 @@ export async function updatePDS(id: string, data: UpdatePDSInput) {
             where: { id },
             data: updateData,
             include: {
-                inspector: { select: { id: true, name: true } }
+                User: { select: { id: true, name: true } }
             }
         });
         revalidatePath('/sales/pds');

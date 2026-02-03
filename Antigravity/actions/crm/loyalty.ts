@@ -36,9 +36,8 @@ export async function getLoyaltyCustomers(): Promise<CustomerDTO[]> {
         return customers.map((c: any) => ({
             ...c,
             email: c.email || undefined,
-            memberSince: c.memberSince?.toISOString(),
-            // expiryDate not in schema
-            pointsEarned: c.totalPoints || c.points || 0
+            memberSince: c.member_since?.toISOString().split('T')[0] || c.member_since?.toISOString(),
+            pointsEarned: c.total_points || c.points || 0
         }));
     } catch (error) {
         console.error("Fetch loyalty error:", error);

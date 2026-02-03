@@ -32,8 +32,8 @@ export async function getQuotes(query?: string) {
     try {
         const quotes = await prisma.serviceQuote.findMany({
             include: {
-                customer: true,
-                advisor: true
+                Customer: true,
+                User: true
             },
             orderBy: { created_at: 'desc' }
         });
@@ -60,7 +60,7 @@ export async function getQuote(id: string) {
     try {
         const quote = await prisma.serviceQuote.findUnique({
             where: { id },
-            include: { customer: true, advisor: true }
+            include: { Customer: true, User: true }
         });
         if (!quote) return null;
         return mapToDTO(quote);
@@ -100,7 +100,7 @@ export async function createQuote(data: CreateServiceQuoteInput) {
                 vat,
                 total_amount: totalAmount
             },
-            include: { customer: true, advisor: true }
+            include: { Customer: true, User: true }
         });
 
         revalidatePath('/service/quotations');
@@ -121,7 +121,7 @@ export async function updateQuote(id: string, data: UpdateServiceQuoteInput) {
         const updated = await prisma.serviceQuote.update({
             where: { id },
             data: updateData,
-            include: { customer: true, advisor: true }
+            include: { Customer: true, User: true }
         });
 
         revalidatePath('/service/quotations');

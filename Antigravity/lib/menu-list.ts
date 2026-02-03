@@ -45,15 +45,20 @@ import {
     Tags,
     ClipboardCheck,
     LineChart,
-    ArrowDownLeft, // Receivables
-    ArrowUpRight, // Payables
+    ArrowDownLeft,
+    ArrowUpRight,
     BadgeDollarSign,
     BarChart4,
     Building,
     Calculator,
     FileBarChart,
     Megaphone,
+    Database,
+    Palette,
+    FolderTree,
+    MapPin,
 } from "lucide-react";
+
 
 export interface MenuItem {
     id: string;
@@ -62,10 +67,16 @@ export interface MenuItem {
     href: string; // Added href for Next.js routing
 }
 
+export interface MenuSubGroup {
+    title: string;
+    items: MenuItem[];
+}
+
 export interface MenuGroup {
     title: string;
     icon: any;
-    items: MenuItem[];
+    items?: MenuItem[];        // Optional - for groups without sub-groups
+    subGroups?: MenuSubGroup[]; // Optional - for groups with sub-groups
 }
 
 export const menuGroups: MenuGroup[] = [
@@ -413,6 +424,92 @@ export const menuGroups: MenuGroup[] = [
                 href: "/accounting/analysis"
             },
         ],
+    },
+    {
+        title: "Master Data",
+        icon: Database,
+        subGroups: [
+            {
+                title: "Nhân Sự",
+                items: [
+                    {
+                        id: "employee-management",
+                        label: "Nhân Viên",
+                        icon: Users,
+                        href: "/master-data/employees"
+                    },
+                ]
+            },
+            {
+                title: "Đối Tác",
+                items: [
+                    {
+                        id: "supplier-management",
+                        label: "Nhà Cung Cấp",
+                        icon: Truck,
+                        href: "/master-data/suppliers"
+                    },
+                    {
+                        id: "insurance-companies",
+                        label: "Công Ty Bảo Hiểm",
+                        icon: Shield,
+                        href: "/master-data/insurance-companies"
+                    },
+                ]
+            },
+            {
+                title: "Phụ Tùng & Kho",
+                items: [
+                    {
+                        id: "warehouse-management",
+                        label: "Kho Hàng",
+                        icon: Building,
+                        href: "/master-data/warehouses"
+                    },
+                    {
+                        id: "uom-management",
+                        label: "Đơn Vị Tính",
+                        icon: Calculator,
+                        href: "/master-data/uoms"
+                    },
+                    {
+                        id: "part-categories",
+                        label: "Danh Mục Phụ Tùng",
+                        icon: FolderTree,
+                        href: "/master-data/part-categories"
+                    },
+                    {
+                        id: "part-locations",
+                        label: "Vị Trí Phụ Tùng",
+                        icon: MapPin,
+                        href: "/master-data/part-locations"
+                    },
+                ]
+            },
+            {
+                title: "Xe & Thanh Toán",
+                items: [
+                    {
+                        id: "vehicle-colors",
+                        label: "Màu Xe",
+                        icon: Palette,
+                        href: "/master-data/vehicle-colors"
+                    },
+                    {
+                        id: "vehicle-models",
+                        label: "Dòng Xe",
+                        icon: Car,
+                        href: "/master-data/vehicle-models"
+                    },
+                    {
+                        id: "payment-methods",
+                        label: "Phương Thức Thanh Toán",
+                        icon: CreditCard,
+                        href: "/master-data/payment-methods"
+                    },
+                ]
+            },
+        ]
     },
     {
         title: "Quản Trị",

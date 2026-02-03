@@ -11,9 +11,9 @@ export async function GET(request: NextRequest) {
       where.category = category
     }
 
-    const settings = await prisma.systemSetting.findMany({
+    const settings = await prisma.system_settings.findMany({
       where,
-      orderBy: { key: 'asc' }
+      orderBy: { setting_code: 'asc' }
     })
 
     return NextResponse.json(settings)
@@ -29,18 +29,18 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { key, value, description, category, data_type } = body
+    const { setting_code, current_value, description, category, data_type } = body
 
-    const existingSetting = await prisma.systemSetting.findUnique({
-      where: { key }
+    const existingSetting = await prisma.system_settings.findUnique({
+      where: { setting_code }
     })
 
     let setting
     if (existingSetting) {
-      setting = await prisma.systemSetting.update({
-        where: { key },
+      setting = await prisma.system_settings.update({
+        where: { setting_code },
         data: {
-          value,
+          current_value,
           description,
           category,
           data_type,
@@ -48,10 +48,12 @@ export async function POST(request: NextRequest) {
         }
       })
     } else {
-      setting = await prisma.systemSetting.create({
+      setting = await prisma.system_settings.create({
         data: {
-          key,
-          value,
+          setting_code,
+          setting_name: setting_code,
+          default_value: current_value,
+          current_value,
           description,
           category,
           data_type,

@@ -7,6 +7,7 @@ import InsuranceClaimList from "@/components/insurance/InsuranceClaimList";
 import { getClaims } from "@/actions/insurance/claims";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
+import Link from "next/link";
 
 export default async function InsuranceClaimsPage() {
   const claims = await getClaims();
@@ -18,9 +19,11 @@ export default async function InsuranceClaimsPage() {
           <h1 className="text-2xl font-bold tracking-tight">Quản Lý Bồi Thường</h1>
           <p className="text-muted-foreground">Theo dõi và xử lý các yêu cầu bồi thường bảo hiểm.</p>
         </div>
-        <Button className="bg-[#E60012] hover:bg-[#c50010]">
-          <Plus className="mr-2 h-4 w-4" /> Tạo Yêu Cầu Mới
-        </Button>
+        <Link href="/insurance/claims/create">
+          <Button className="bg-[#E60012] hover:bg-[#c50010]">
+            <Plus className="mr-2 h-4 w-4" /> Tạo Yêu Cầu Mới
+          </Button>
+        </Link>
       </div>
 
       <InsuranceClaimList claims={claims} />

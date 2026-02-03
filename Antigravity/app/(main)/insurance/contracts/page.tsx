@@ -49,9 +49,11 @@ export default function ContractsPage() {
                     <p className="text-muted-foreground">Quản lý hồ sơ và theo dõi tình trạng hợp đồng bảo hiểm.</p>
                 </div>
 
-                <Button className="bg-[#E60012] hover:bg-[#B8000E]">
-                    <Plus className="mr-2 h-4 w-4" /> Tạo Hợp Đồng Mới
-                </Button>
+                <Link href="/insurance/contracts/create">
+                    <Button className="bg-[#E60012] hover:bg-[#B8000E]">
+                        <Plus className="mr-2 h-4 w-4" /> Tạo Hợp Đồng Mới
+                    </Button>
+                </Link>
             </div>
 
             <div className="flex items-center justify-between space-x-2">

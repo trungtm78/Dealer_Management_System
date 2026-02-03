@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const transactions = await prisma.loyaltyTransaction.findMany({
       where,
       include: {
-        customer: {
+        Customer: {
           select: {
             id: true,
             name: true,
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
           reference_id
         },
         include: {
-          customer: {
+          Customer: {
             select: {
               id: true,
               name: true,

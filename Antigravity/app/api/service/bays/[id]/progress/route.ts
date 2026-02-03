@@ -6,7 +6,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         const body = await req.json();
         const { progress_percent, notes, user_id } = body;
 
-        const assignment = await prisma.bayAssignment.findFirst({
+        const assignment = await prisma.bay_assignments.findFirst({
             where: {
                 bay_id: params.id,
                 status: { in: ['ASSIGNED', 'WORKING'] }
@@ -30,7 +30,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         }
 
         const updated = await prisma.$transaction(async (tx) => {
-            const upd = await tx.bayAssignment.update({
+            const upd = await tx.bay_assignments.update({
                 where: { id: assignment.id },
                 data: {
                     progress_percent,
@@ -40,7 +40,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
             });
 
             if (notes) {
-                await tx.bayStatusLog.create({
+                await tx.bay_status_logs.create({
                     data: {
                         bay_id: params.id,
                         assignment_id: assignment.id,

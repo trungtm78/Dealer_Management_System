@@ -56,8 +56,8 @@ data: {
                 status: 'SCHEDULED'
             },
 include: {
-                customer: true,
-                salesConsultant: {
+                Customer: true,
+                User: {
                     select: {
                         id: true,
                         name: true,
@@ -82,8 +82,8 @@ export async function getTestDrives() {
     try {
         const testDrives = await prisma.testDrive.findMany({
 include: {
-                customer: true,
-                salesConsultant: {
+                Customer: true,
+                User: {
                     select: {
                         id: true,
                         name: true,

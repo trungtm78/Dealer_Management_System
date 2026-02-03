@@ -33,22 +33,6 @@ export const EntityValidators = {
   },
 
   /**
-   * Vehicle Models Validation
-   * BUG-022: Model required fields, valid prices
-   */
-  vehicleModels: (data: any) => {
-    if (!data.name || !data.name.trim()) {
-      throw new ValidationError('Tên dòng xe là bắt buộc');
-    }
-    if (!data.year || data.year < 2000 || data.year > new Date().getFullYear() + 1) {
-      throw new ValidationError('Năm sản xuất không hợp lệ');
-    }
-    if (data.base_price !== undefined) {
-      ValidationRules.positiveDecimal(parseFloat(data.base_price), 'Giá cơ bản');
-    }
-  },
-
-  /**
    * Suppliers Validation
    * BUG-023: Supplier required fields, valid contact info
    */
@@ -96,6 +80,25 @@ export const EntityValidators = {
     }
     if (!data.color_code || !data.color_code.trim()) {
       throw new ValidationError('Mã màu là bắt buộc');
+    }
+  },
+
+  /**
+   * Vehicle Models Validation
+   * BUG-022: Model required fields, valid prices
+   */
+  vehicleModels: (data: any) => {
+    if (!data.model_name || !data.model_name.trim()) {
+      throw new ValidationError('Tên dòng xe là bắt buộc');
+    }
+    if (!data.model_code || !data.model_code.trim()) {
+      throw new ValidationError('Mã dòng xe là bắt buộc');
+    }
+    if (!data.category || !data.category.trim()) {
+      throw new ValidationError('Loại xe là bắt buộc');
+    }
+    if (data.base_price !== undefined) {
+      ValidationRules.positiveDecimal(parseFloat(data.base_price), 'Giá cơ bản');
     }
   },
 

@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
       where.compatible_models = { has: compatibleModel }
     }
 
-    const accessories = await prisma.accessory.findMany({
+    const accessories = await prisma.accessories.findMany({
       where,
       orderBy: { created_at: 'desc' }
     })
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       warranty_period_months 
     } = body
 
-    const accessory = await prisma.accessory.create({
+    const accessory = await prisma.accessories.create({
       data: {
         accessory_code: `ACC-${Date.now()}`,
         accessory_name: name,

@@ -1,0 +1,10 @@
+
+> honda-spice-erp@0.1.0 build
+> next build
+
+   ▲ Next.js 14.1.0
+   - Environments: .env
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...

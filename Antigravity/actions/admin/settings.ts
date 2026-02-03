@@ -8,10 +8,10 @@ import { revalidatePath } from 'next/cache'
  */
 export async function getSystemSetting(key: string) {
     try {
-        const setting = await prisma.systemSetting.findUnique({
-            where: { key }
+        const setting = await prisma.system_settings.findFirst({
+            where: { setting_code: key }
         })
-        return setting ? setting.value : null
+        return setting ? setting.current_value : null
     } catch (error) {
         console.error('Failed to get setting:', error)
         return null
@@ -24,20 +24,23 @@ export async function getSystemSetting(key: string) {
 export async function updateSystemSetting(key: string, value: any, userId: string, description?: string) {
     try {
         const stringValue = typeof value === 'string' ? value : JSON.stringify(value)
-        const setting = await prisma.systemSetting.upsert({
-            where: { key },
+        const setting = await prisma.system_settings.upsert({
+            where: { setting_code: key },
             update: {
-                value: stringValue,
+                current_value: stringValue,
                 updated_by: userId,
                 description: description || undefined
             },
             create: {
-                key,
-                value: stringValue,
+                setting_code: key,
+                setting_name: key,
+                default_value: stringValue,
+                current_value: stringValue,
+                category: 'general',
+                data_type: typeof value === 'string' ? 'string' : 'json',
                 updated_by: userId,
                 description: description || undefined,
-                data_type: typeof value === 'string' ? 'string' : 'json',
-                category: 'general'
+                updated_at: new Date()
             }
         })
 
@@ -60,16 +63,16 @@ export async function updateSystemSetting(key: string, value: any, userId: strin
  */
 export async function getAllSystemSettings() {
     try {
-        const settings = await prisma.systemSetting.findMany({
+        const settings = await prisma.system_settings.findMany({
             include: {
-                updatedBy: {
+                User: {
                     select: {
                         name: true,
                         email: true
                     }
                 }
             },
-orderBy: {
+            orderBy: {
                 updated_at: 'desc'
             }
         })
@@ -85,8 +88,8 @@ orderBy: {
  */
 export async function deleteSystemSetting(key: string) {
     try {
-        await prisma.systemSetting.delete({
-            where: { key }
+        await prisma.system_settings.delete({
+            where: { id: key }
         })
         return { success: true }
     } catch (error) {

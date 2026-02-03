@@ -1,0 +1,25 @@
+# Task Checklist: Master Data UI/UX Update (CR Process)
+
+- [x] **CR-01: Intake & Validation**
+    - [x] List prompt files and CRs <!-- id: 18 -->
+    - [x] Read `prompt_CR-01.md` (Verify content) <!-- id: 19 -->
+    - [x] Create `change_request_<CR-ID>_intake.md` <!-- id: 20 -->
+- [x] **CR-02: Impact Analysis**
+    - [x] Read `prompt_CR-02.md` <!-- id: 21 -->
+    - [x] Analyze impact on BRD, FRD, ERD, API, UI <!-- id: 22 -->
+    - [x] Create `change_request_<CR-ID>_impact_analysis.md` <!-- id: 23 -->
+- [x] **CR-03: Create Drafts**
+    - [x] Read `prompt_CR-03.md` <!-- id: 24 -->
+    - [x] Create BRD Draft <!-- id: 25 -->
+    - [x] Create FRD Draft <!-- id: 26 -->
+    - [x] Create ERD Draft <!-- id: 27 -->
+    - [x] Create API Spec Draft <!-- id: 28 -->
+    - [x] Create UI Spec Draft <!-- id: 29 -->
+- [x] **CR-04: Review & Approve**
+    - [x] Read `prompt_CR-04.md` <!-- id: 30 -->
+    - [x] Perform consistency checks <!-- id: 31 -->
+    - [x] Create `change_request_<CR-ID>_review_decision.md` <!-- id: 32 -->
+- [x] **CR-05: Consolidate & Handover**
+    - [x] Read `prompt_CR-05.md` <!-- id: 33 -->
+    - [x] Merge drafts into main documents <!-- id: 34 -->
+    - [x] Create `HANDOVER_TO_OPENCODE.md` <!-- id: 35 -->

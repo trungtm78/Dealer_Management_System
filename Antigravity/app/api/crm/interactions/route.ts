@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
 
     const interactions = await prisma.interaction.findMany({
       include: {
-        lead: {
+        Lead: {
           select: {
             id: true,
             name: true,
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
             email: true
           }
         },
-        customer: {
+        Customer: {
           select: {
             id: true,
             name: true,
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
             email: true
           }
         },
-        user: {
+        User: {
           select: {
             id: true,
             name: true,
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
         metadata: metadata ? JSON.stringify(metadata) : null
       },
       include: {
-        lead: {
+        Lead: {
           select: {
             id: true,
             name: true,
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
             email: true
           }
         },
-        customer: {
+        Customer: {
           select: {
             id: true,
             name: true,
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
             email: true
           }
         },
-        user: {
+        User: {
           select: {
             id: true,
             name: true,

@@ -7,173 +7,63 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-//=============================================================================
-// ENUMS (Simulated with String for SQLite compatibility)
-//=============================================================================
-// UserRole: ADMIN, MANAGER, SALES, SERVICE, PARTS, ACCOUNTING, INSURANCE
-// LeadSource: FACEBOOK, WEBSITE, WALK_IN, HOTLINE, REFERRAL, OTHER
-// LeadStatus: NEW, CONTACTED, QUALIFIED, PROPOSAL, NEGOTIATION, WON, DEAD
-// CustomerType: INDIVIDUAL, COMPANY
-// LoyaltyTier: BRONZE, SILVER, GOLD, PLATINUM, DIAMOND
-// QuotationStatus: DRAFT, SENT, APPROVED, CONTRACT, LOST, EXPIRED
-// TestDriveStatus: SCHEDULED, COMPLETED, CANCELLED, NO_SHOW
-// VinStatus: AVAILABLE, ALLOCATED, SOLD
-// DepositStatus: PAID, REFUNDED, CANCELLED
-// ServiceAppointmentStatus: SCHEDULED, CONFIRMED, ARRIVED, IN_PROGRESS, COMPLETED, CANCELLED
-// RepairOrderStatus: PENDING, IN_PROGRESS, QC, READY, DELIVERED
-// StockMovementType: IN, OUT, TRANSFER, ADJUSTMENT
-// PurchaseOrderStatus: DRAFT, SENT, CONFIRMED, RECEIVED, CLOSED
-// InsuranceContractStatus: ACTIVE, EXPIRED, CANCELLED
-// InsuranceClaimStatus: SUBMITTED, REVIEWING, APPROVED, PAID, REJECTED
-// PaymentMethod: CASH, CARD, TRANSFER
-// TransactionType: DEBIT, CREDIT
-// ActivityType: CALL, EMAIL, MEETING, NOTE, STAGE_CHANGE
-// ReminderType: MAINTENANCE, INSPECTION, INSURANCE, BIRTHDAY
-// ComplaintStatus: NEW, IN_PROGRESS, RESOLVED, CLOSED
-// CampaignType: SMS, EMAIL, SOCIAL, EVENT, ZALO, FACEBOOK
-// CampaignStatus: DRAFT, ACTIVE, PAUSED, COMPLETED
-
-//=============================================================================
-// MODULE 8: ADMIN
-//=============================================================================
-
-model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  password_hash String
-  name          String
-  role          String    // UserRole enum
-  department    String?
-  phone         String?
-  status        String    @default("ACTIVE")
-  last_login    DateTime?
-  failed_login_attempts Int @default(0)
-  password_changed_at DateTime?
-  is_active     Boolean   @default(true)
-  deleted_at    DateTime?
-  created_at    DateTime  @default(now())
-  updated_at    DateTime  @updatedAt
-
-  assignedLeads       Lead[]               @relation("AssignedTo")
-  activityLogs        ActivityLog[]
-  interactions        Interaction[]
-  testDrives          TestDrive[]          @relation("SalesConsultant")
-  quotations          Quotation[]          @relation("QuoteCreator")
-  contracts           Contract[]           @relation("ContractCreator")
-  deposits            Deposit[]            @relation("DepositReceiver")
-  serviceAppointments ServiceAppointment[] @relation("ServiceAdvisor")
-  repairOrdersAdvisor RepairOrder[]        @relation("ROAdvisor")
-  repairOrdersTech    RepairOrder[]        @relation("ROTechnician")
-  workLogs            WorkLog[]
-  qcChecklists        QCChecklist[]
-  stockMovements      StockMovement[]
-  purchaseOrders      PurchaseOrder[]      @relation("POCreator")
-  stockTakesCounted   StockTake[]          @relation("StockTakeCounter")
-  stockTakesApproved  StockTake[]          @relation("StockTakeApprover")
-  insuranceContracts  InsuranceContract[]  @relation("InsuranceCreator")
-  insuranceClaims     InsuranceClaim[]     @relation("ClaimReviewer")
-  invoices            Invoice[]            @relation("InvoiceCreator")
-  payments            Payment[]            @relation("PaymentReceiver")
-  accountingTrans     Transaction[]        @relation("TransactionCreator")
-  taxDeclarations     TaxDeclaration[]     @relation("TaxCreator")
-  complaints          Complaint[]          @relation("ComplaintAssignee")
-  campaigns           MarketingCampaign[]  @relation("CampaignCreator")
-  pdsInspections      PDSChecklist[]       @relation("PDSInspector")
-  serviceQuotes       ServiceQuote[]       @relation("ServiceAdvisorQuote")
-  leadHistories       LeadHistory[]        @relation("HistoryUser")
-  systemSettings      SystemSetting[]      @relation("SettingUpdater")
-  bayStatusLogs       BayStatusLog[]       @relation("BayStatusChanger")
-}
-
-model SystemSetting {
-  id          String   @id @default(cuid())
-  key         String   @unique
-  value       String
-  data_type   String   // string, number, boolean, json
-  category    String   // email, sms, notification, general
-  description String?
-  is_public   Boolean  @default(false)
-  updated_by  String?
-  updated_at  DateTime @default(now()) @updatedAt
-
-  updatedBy User? @relation("SettingUpdater", fields: [updated_by], references: [id])
-
-  @@map("system_settings")
-}
-
 model ActivityLog {
   id         String   @id @default(cuid())
   user_id    String
   action     String
   entity     String
   entity_id  String?
-  details    String?  
+  details    String?
   ip_address String?
   created_at DateTime @default(now())
-
-  user User @relation(fields: [user_id], references: [id])
+  User       User     @relation(fields: [user_id], references: [id])
 }
 
-model SystemMetric {
-  id          String   @id @default(cuid())
-  metric_type String
-  value       Decimal
-  unit        String?
-  timestamp   DateTime @default(now())
+model Complaint {
+  id         String   @id @default(cuid())
+  customer_id    String
+  category       String
+  priority       String
+  status         String    @default("NEW")
+  description    String
+  resolution     String?
+  assigned_to_id String?
+  created_at     DateTime  @default(now())
+  updated_at DateTime @default(now())
+  resolved_at    DateTime?
+  User           User?     @relation(fields: [assigned_to_id], references: [id])
+  Customer       Customer  @relation(fields: [customer_id], references: [id])
 }
 
-//=============================================================================
-// MODULE 2: CRM
-//=============================================================================
-
-model Lead {
-  id              String      @id @default(cuid())
-  name            String
-  phone           String
-  email           String?
-  address         String?
-  model_interest  String?
-  model_version   String?
-  budget          Decimal?
-  source          String      // LeadSource enum
-  status          String      @default("NEW") // LeadStatus enum
-  score           Int         @default(10)
-  notes           String?
-  customer_type   String?     // CustomerType enum
-  customer_id     String?
-  assigned_to_id  String?
-  deleted_at      DateTime?
-  created_at      DateTime    @default(now())
-  updated_at      DateTime    @updatedAt
-
-  customer     Customer?     @relation(fields: [customer_id], references: [id], onDelete: Restrict)
-  assignedTo   User?         @relation("AssignedTo", fields: [assigned_to_id], references: [id], onDelete: Restrict)
-  interactions Interaction[]
-  history      LeadHistory[]
-
-  @@index([phone])
-  @@index([status])
-  @@index([assigned_to_id])
-}
-
-model LeadHistory {
-  id            String   @id @default(cuid())
-  lead_id       String
-  changed_by_id String
-  field         String
-  old_value     String?
-  new_value     String?
-  created_at    DateTime @default(now())
-
-  lead      Lead @relation(fields: [lead_id], references: [id])
-  changedBy User @relation("HistoryUser", fields: [changed_by_id], references: [id])
+model Contract {
+  id         String   @id @default(cuid())
+  contract_number  String         @unique
+  quotation_id     String
+  customer_id      String
+  vin_id           String?
+  total_amount     Decimal
+  deposit_amount   Decimal
+  remaining_amount Decimal
+  payment_method   String?
+  contract_date    DateTime
+  delivery_date    DateTime?
+  status           String         @default("ACTIVE")
+  created_by_id    String
+  created_at       DateTime       @default(now())
+  updated_at DateTime @default(now())
+  User             User           @relation(fields: [created_by_id], references: [id])
+  Customer         Customer       @relation(fields: [customer_id], references: [id])
+  Quotation        Quotation      @relation(fields: [quotation_id], references: [id])
+  Deposit          Deposit[]
+  PDSChecklist     PDSChecklist[]
+  Vin              Vin?
 }
 
 model Customer {
-  id                    String       @id @default(cuid())
+  id         String   @id @default(cuid())
   name                  String
-  type                  String       // CustomerType enum
-  phone                 String       @unique
+  type                  String
+  phone                 String               @unique
   mobile                String?
   email                 String?
   street                String?
@@ -181,62 +71,460 @@ model Customer {
   district              String?
   city                  String?
   vat                   String?
-  status                String       @default("ACTIVE") // LoyaltyTier enum
-  tier                  String       @default("BRONZE") // LoyaltyTier enum
-  points                Int          @default(0)
-  total_points          Int          @default(0)
-  tags                  String?      // JSON array
+  status                String               @default("ACTIVE")
+  tier                  String               @default("BRONZE")
+  points                Int                  @default(0)
+  total_points          Int                  @default(0)
+  tags                  String?
   notes                 String?
-  member_since          DateTime     @default(now())
+  member_since          DateTime             @default(now())
   last_transaction_date DateTime?
   deleted_at            DateTime?
-  created_at            DateTime     @default(now())
-  updated_at            DateTime     @updatedAt
+  created_at            DateTime             @default(now())
+  updated_at DateTime @default(now())
+  Complaint             Complaint[]
+  Contract              Contract[]
+  Deposit               Deposit[]
+  InsuranceContract     InsuranceContract[]
+  Interaction           Interaction[]
+  Invoice               Invoice[]
+  Lead                  Lead[]
+  LoyaltyTransaction    LoyaltyTransaction[]
+  Quotation             Quotation[]
+  Reminder              Reminder[]
+  RepairOrder           RepairOrder[]
+  ServiceAppointment    ServiceAppointment[]
+  ServiceQuote          ServiceQuote[]
+  TestDrive             TestDrive[]
 
-  leads               Lead[]
-  interactions        Interaction[]
-  quotations          Quotation[]
-  testDrives          TestDrive[]
-  contracts           Contract[]
-  deposits            Deposit[]
-  serviceAppointments ServiceAppointment[]
-  repairOrders        RepairOrder[]
-  insuranceContracts  InsuranceContract[]
-  invoices            Invoice[]
-  complaints          Complaint[]
-  reminders           Reminder[]
-  loyaltyTransactions LoyaltyTransaction[]
-  serviceQuotes       ServiceQuote[]
-
-  @@index([phone])
   @@index([tier])
+  @@index([phone])
+}
+
+model Deposit {
+  id         String   @id @default(cuid())
+  receipt_number  String    @unique
+  customer_id     String?
+  customer_name   String
+  contract_id     String?
+  contract_number String?
+  amount          Decimal
+  payment_method  String
+  status          String    @default("PAID")
+  notes           String?
+  received_by_id  String
+  created_at      DateTime  @default(now())
+  updated_at DateTime @default(now())
+  User            User      @relation(fields: [received_by_id], references: [id])
+  Contract        Contract? @relation(fields: [contract_id], references: [id])
+  Customer        Customer? @relation(fields: [customer_id], references: [id])
+}
+
+model DepreciationSchedule {
+  id         String   @id @default(cuid())
+  asset_id                 String
+  period_month             String
+  depreciation_amount      Decimal
+  accumulated_depreciation Decimal
+  net_book_value           Decimal
+  created_at               DateTime   @default(now())
+  FixedAsset               FixedAsset @relation(fields: [asset_id], references: [id])
+}
+
+model FixedAsset {
+  id         String   @id @default(cuid())
+  asset_code               String                 @unique
+  asset_name               String
+  category                 String
+  acquisition_date         DateTime
+  acquisition_cost         Decimal
+  useful_life_years        Int
+  depreciation_method      String
+  accumulated_depreciation Decimal                @default(0)
+  net_book_value           Decimal
+  location                 String?
+  status                   String                 @default("ACTIVE")
+  created_at               DateTime               @default(now())
+  updated_at DateTime @default(now())
+  DepreciationSchedule     DepreciationSchedule[]
+}
+
+model InsuranceClaim {
+  id         String   @id @default(cuid())
+  claim_number         String            @unique
+  contract_id          String
+  incident_date        DateTime
+  incident_type        String
+  incident_description String
+  claim_amount         Decimal
+  approved_amount      Decimal?
+  status               String            @default("SUBMITTED")
+  documents            String?
+  notes                String?
+  reviewed_by_id       String?
+  reviewed_at          DateTime?
+  paid_at              DateTime?
+  created_at           DateTime          @default(now())
+  updated_at DateTime @default(now())
+  User                 User?             @relation(fields: [reviewed_by_id], references: [id])
+  InsuranceContract    InsuranceContract @relation(fields: [contract_id], references: [id])
+}
+
+model InsuranceContract {
+  id         String   @id @default(cuid())
+  contract_number   String           @unique
+  customer_id       String
+  vehicle_id        String?
+  insurance_type    String
+  insurance_company String
+  policy_number     String
+  premium_amount    Decimal
+  coverage_amount   Decimal
+  start_date        DateTime
+  end_date          DateTime
+  status            String           @default("ACTIVE")
+  notes             String?
+  created_by_id     String
+  created_at        DateTime         @default(now())
+  updated_at DateTime @default(now())
+  InsuranceClaim    InsuranceClaim[]
+  User              User             @relation(fields: [created_by_id], references: [id])
+  Customer          Customer         @relation(fields: [customer_id], references: [id])
 }
 
 model Interaction {
-  id          String       @id @default(cuid())
+  id         String   @id @default(cuid())
   lead_id     String?
   customer_id String?
   user_id     String
-  type        String       // ActivityType enum
+  type        String
   outcome     String?
   notes       String?
-  metadata    String?      // JSON
-  created_at  DateTime     @default(now())
-
-  lead     Lead?     @relation(fields: [lead_id], references: [id])
-  customer Customer? @relation(fields: [customer_id], references: [id])
-  user     User      @relation(fields: [user_id], references: [id])
+  metadata    String?
+  created_at  DateTime  @default(now())
+  User        User      @relation(fields: [user_id], references: [id])
+  Customer    Customer? @relation(fields: [customer_id], references: [id])
+  Lead        Lead?     @relation(fields: [lead_id], references: [id])
 }
 
-model ScoringRule {
+model Invoice {
   id         String   @id @default(cuid())
-  name       String
-  category   String
-  condition  String   // JSON
-  points     Int
-  is_active  Boolean  @default(true)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  invoice_number String    @unique
+  customer_id    String
+  invoice_type   String
+  reference_id   String?
+  invoice_date   DateTime
+  due_date       DateTime
+  sub_total      Decimal
+  vat            Decimal
+  total_amount   Decimal
+  paid_amount    Decimal   @default(0)
+  status         String    @default("UNPAID")
+  notes          String?
+  created_by_id  String
+  created_at     DateTime  @default(now())
+  updated_at DateTime @default(now())
+  User           User      @relation(fields: [created_by_id], references: [id])
+  Customer       Customer  @relation(fields: [customer_id], references: [id])
+  Payment        Payment[]
+
+  @@index([status])
+  @@index([invoice_number])
+}
+
+model Lead {
+  id         String   @id @default(cuid())
+  name           String
+  phone          String
+  email          String?
+  address        String?
+  model_interest String?
+  model_version  String?
+  budget         Decimal?
+  source         String
+  status         String        @default("NEW")
+  score          Int           @default(10)
+  notes          String?
+  customer_type  String?
+  customer_id    String?
+  assigned_to_id String?
+  deleted_at     DateTime?
+  created_at     DateTime      @default(now())
+  updated_at DateTime @default(now())
+  Interaction    Interaction[]
+  User           User?         @relation(fields: [assigned_to_id], references: [id], onDelete: Restrict)
+  Customer       Customer?     @relation(fields: [customer_id], references: [id], onDelete: Restrict)
+  LeadHistory    LeadHistory[]
+
+  @@index([assigned_to_id])
+  @@index([status])
+  @@index([phone])
+}
+
+model LeadHistory {
+  id         String   @id @default(cuid())
+  lead_id       String
+  changed_by_id String
+  field         String
+  old_value     String?
+  new_value     String?
+  created_at    DateTime @default(now())
+  User          User     @relation(fields: [changed_by_id], references: [id])
+  Lead          Lead     @relation(fields: [lead_id], references: [id])
+}
+
+model LoyaltyTransaction {
+  id         String   @id @default(cuid())
+  customer_id  String
+  points       Int
+  type         String
+  reason       String
+  reference_id String?
+  created_at   DateTime @default(now())
+  Customer     Customer @relation(fields: [customer_id], references: [id])
+}
+
+model MarketingCampaign {
+  id         String   @id @default(cuid())
+  name            String
+  description     String?
+  type            String
+  status          String    @default("DRAFT")
+  target_segment  String?
+  budget          Decimal?
+  start_date      DateTime?
+  end_date        DateTime?
+  sent_count      Int       @default(0)
+  opened_count    Int       @default(0)
+  clicked_count   Int       @default(0)
+  converted_count Int       @default(0)
+  created_by_id   String
+  created_at      DateTime  @default(now())
+  updated_at DateTime @default(now())
+  User            User      @relation(fields: [created_by_id], references: [id])
+}
+
+model PDSChecklist {
+  id         String   @id @default(cuid())
+  contract_id         String
+  vin_id              String
+  exterior_check      String?
+  interior_check      String?
+  mechanical_check    String?
+  documentation_check String?
+  photos              String?
+  inspector_id        String
+  customer_signature  String?
+  inspector_signature String?
+  delivery_date       DateTime?
+  created_at          DateTime  @default(now())
+  updated_at DateTime @default(now())
+  User                User      @relation(fields: [inspector_id], references: [id])
+  Vin                 Vin       @relation(fields: [vin_id], references: [id])
+  Contract            Contract  @relation(fields: [contract_id], references: [id])
+}
+
+model POLineItem {
+  id         String   @id @default(cuid())
+  po_id             String
+  part_id           String
+  quantity          Int
+  unit_price        Decimal
+  total_price       Decimal
+  received_quantity Int           @default(0)
+  created_at        DateTime      @default(now())
+  Part              Part          @relation(fields: [part_id], references: [id])
+  PurchaseOrder     PurchaseOrder @relation(fields: [po_id], references: [id])
+}
+
+model Part {
+  id         String   @id @default(cuid())
+  part_number   String          @unique
+  name          String
+  description   String?
+  category      String
+  quantity      Int             @default(0)
+  min_stock     Int             @default(10)
+  max_stock     Int             @default(100)
+  unit_price    Decimal
+  cost_price    Decimal
+  supplier_id   String?
+  location      String?
+  status        String          @default("ACTIVE")
+  created_at    DateTime        @default(now())
+  updated_at DateTime @default(now())
+  POLineItem    POLineItem[]
+  Supplier      Supplier?       @relation(fields: [supplier_id], references: [id])
+  StockMovement StockMovement[]
+  StockTakeItem StockTakeItem[]
+
+  @@index([category])
+  @@index([part_number])
+}
+
+model Payment {
+  id         String   @id @default(cuid())
+  payment_number   String   @unique
+  invoice_id       String
+  payment_date     DateTime
+  amount           Decimal
+  payment_method   String
+  reference_number String?
+  notes            String?
+  received_by_id   String
+  created_at       DateTime @default(now())
+  User             User     @relation(fields: [received_by_id], references: [id])
+  Invoice          Invoice  @relation(fields: [invoice_id], references: [id])
+}
+
+model Permission {
+  id         String   @id @default(cuid())
+  module           String
+  action           String
+  description      String?
+  created_at       DateTime           @default(now())
+  role_permissions role_permissions[]
+}
+
+model PurchaseOrder {
+  id         String   @id @default(cuid())
+  po_number              String       @unique
+  supplier_id            String
+  status                 String       @default("DRAFT")
+  order_date             DateTime
+  expected_delivery_date DateTime?
+  actual_delivery_date   DateTime?
+  total_amount           Decimal
+  notes                  String?
+  created_by_id          String
+  created_at             DateTime     @default(now())
+  updated_at DateTime @default(now())
+  POLineItem             POLineItem[]
+  User                   User         @relation(fields: [created_by_id], references: [id])
+  Supplier               Supplier     @relation(fields: [supplier_id], references: [id])
+}
+
+model QCChecklist {
+  id         String   @id @default(cuid())
+  ro_id           String
+  checklist_items String
+  photos          String?
+  qc_result       String
+  qc_by_id        String
+  rework_notes    String?
+  created_at      DateTime    @default(now())
+  User            User        @relation(fields: [qc_by_id], references: [id])
+  RepairOrder     RepairOrder @relation(fields: [ro_id], references: [id])
+}
+
+model Quotation {
+  id               String     @id @default(cuid())
+  quote_number     String     @unique
+  customer_id      String?
+  customer_name    String
+  customer_phone   String
+  model            String
+  version          String
+  color            String
+  base_price       Decimal
+  accessories      String?
+  services         String?
+  insurance        Decimal?
+  registration_tax Decimal?
+  registration_fee Decimal?
+  other_fees       Decimal?
+  discount         Decimal    @default(0)
+  promotion_value  Decimal    @default(0)
+  total_price      Decimal
+  status           String     @default("DRAFT")
+  valid_until      DateTime?
+  // CR-20260202-004: Payment Info
+  payment_method   String?    @default("CASH")
+  bank_id          String?
+  prepayment_ratio Decimal?
+  loan_term        Int?
+  interest_rate    Decimal?
+  // CR-20260202-004: Promotions & Notes
+  promotions       String?
+  customer_notes   String?
+  internal_notes   String?
+  created_by_id    String
+  created_at       DateTime   @default(now())
+  updated_at       DateTime   @default(now())
+  Contract         Contract[]
+  User             User       @relation(fields: [created_by_id], references: [id])
+  Customer         Customer?  @relation(fields: [customer_id], references: [id])
+
+  @@index([status])
+  @@index([quote_number])
+}
+
+model ROLineItem {
+  id         String   @id @default(cuid())
+  ro_id       String
+  item_type   String
+  item_code   String
+  item_name   String
+  quantity    Decimal
+  unit_price  Decimal
+  total_price Decimal
+  created_at  DateTime    @default(now())
+  RepairOrder RepairOrder @relation(fields: [ro_id], references: [id])
+}
+
+model Reminder {
+  id         String   @id @default(cuid())
+  customer_id    String
+  type           String
+  scheduled_date DateTime
+  message        String?
+  channel        String?
+  status         String    @default("PENDING")
+  sent_at        DateTime?
+  created_at     DateTime  @default(now())
+  Customer       Customer  @relation(fields: [customer_id], references: [id])
+}
+
+model RepairOrder {
+  id         String   @id @default(cuid())
+  ro_number                            String              @unique
+  appointment_id                       String?
+  customer_id                          String
+  vehicle_info                         String
+  mileage                              Int?
+  fuel_level                           String?
+  customer_complaints                  String?
+  inspection_notes                     String?
+  status                               String              @default("PENDING")
+  advisor_id                           String
+  technician_id                        String?
+  bay_number                           String?
+  estimated_completion                 DateTime?
+  actual_completion                    DateTime?
+  created_at                           DateTime            @default(now())
+  updated_at DateTime @default(now())
+  QCChecklist                          QCChecklist[]
+  ROLineItem                           ROLineItem[]
+  User_RepairOrder_technician_idToUser User?               @relation("RepairOrder_technician_idToUser", fields: [technician_id], references: [id])
+  User_RepairOrder_advisor_idToUser    User                @relation("RepairOrder_advisor_idToUser", fields: [advisor_id], references: [id])
+  Customer                             Customer            @relation(fields: [customer_id], references: [id])
+  ServiceAppointment                   ServiceAppointment? @relation(fields: [appointment_id], references: [id])
+  WorkLog                              WorkLog[]
+  bay_assignments                      bay_assignments[]
+
+  @@index([status])
+  @@index([ro_number])
+}
+
+model Role {
+  id         String   @id @default(cuid())
+  name             String             @unique
+  description      String?
+  is_system        Boolean            @default(false)
+  created_at       DateTime           @default(now())
+  updated_at DateTime @default(now())
+  User             User[]
+  role_permissions role_permissions[]
 }
 
 model ScoringCriteria {
@@ -246,223 +534,34 @@ model ScoringCriteria {
   score      Int
   status     String   @default("ACTIVE")
   created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  updated_at DateTime @default(now())
 }
 
-model Reminder {
-  id             String       @id @default(cuid())
+model ServiceAppointment {
+  id         String   @id @default(cuid())
   customer_id    String
-  type           String       // ReminderType enum
+  vehicle_info   String
+  service_type   String
   scheduled_date DateTime
-  message        String?
-  channel        String?
-  status         String       @default("PENDING")
-  sent_at        DateTime?
-  created_at     DateTime     @default(now())
-
-  customer Customer @relation(fields: [customer_id], references: [id])
+  scheduled_time String
+  status         String        @default("SCHEDULED")
+  advisor_id     String
+  bay_number     String?
+  notes          String?
+  created_at     DateTime      @default(now())
+  updated_at DateTime @default(now())
+  RepairOrder    RepairOrder[]
+  User           User          @relation(fields: [advisor_id], references: [id])
+  Customer       Customer      @relation(fields: [customer_id], references: [id])
 }
-
-model LoyaltyTransaction {
-  id           String   @id @default(cuid())
-  customer_id  String
-  points       Int
-  type         String
-  reason       String
-  reference_id String?
-  created_at   DateTime @default(now())
-
-  customer Customer @relation(fields: [customer_id], references: [id])
-}
-
-model Complaint {
-  id             String          @id @default(cuid())
-  customer_id    String
-  category       String
-  priority       String
-  status         String          @default("NEW") // ComplaintStatus enum
-  description    String
-  resolution     String?
-  assigned_to_id String?
-  created_at     DateTime        @default(now())
-  updated_at     DateTime        @updatedAt
-  resolved_at    DateTime?
-
-  customer   Customer @relation(fields: [customer_id], references: [id])
-  assignedTo User?    @relation("ComplaintAssignee", fields: [assigned_to_id], references: [id])
-}
-
-model MarketingCampaign {
-  id              String         @id @default(cuid())
-  name            String
-  description     String?
-  type            String         // CampaignType enum
-  status          String         @default("DRAFT") // CampaignStatus enum
-  target_segment  String?        // JSON
-  budget          Decimal?
-  start_date      DateTime?
-  end_date        DateTime?
-  sent_count      Int            @default(0)
-  opened_count    Int            @default(0)
-  clicked_count   Int            @default(0)
-  converted_count Int            @default(0)
-  created_by_id   String
-  created_at      DateTime       @default(now())
-  updated_at      DateTime       @updatedAt
-
-  createdBy User @relation("CampaignCreator", fields: [created_by_id], references: [id])
-}
-
-//=============================================================================
-// MODULE 3: SALES
-//=============================================================================
-
-model Quotation {
-  id                String          @id @default(cuid())
-  quote_number      String          @unique
-  customer_id       String?
-  customer_name     String
-  customer_phone    String
-  model             String
-  version           String
-  color             String
-  base_price        Decimal
-  accessories       String?         // JSON
-  services          String?         // JSON
-  insurance         Decimal?
-  registration_tax  Decimal?
-  registration_fee  Decimal?
-  other_fees        Decimal?
-  discount          Decimal         @default(0)
-  promotion_value   Decimal         @default(0)
-  total_price       Decimal
-  status            String          @default("DRAFT") // QuotationStatus enum
-  valid_until       DateTime?
-  created_by_id     String
-  created_at        DateTime        @default(now())
-  updated_at        DateTime        @updatedAt
-
-  customer  Customer?  @relation(fields: [customer_id], references: [id])
-  createdBy User       @relation("QuoteCreator", fields: [created_by_id], references: [id], onDelete: Restrict)
-  contracts Contract[]
-
-  @@index([quote_number])
-  @@index([status])
-}
-
-model TestDrive {
-  id                  String          @id @default(cuid())
-  customer_id         String
-  model               String
-  scheduled_date      DateTime
-  scheduled_time      String
-  status              String          @default("SCHEDULED") // TestDriveStatus enum
-  sales_consultant_id String
-  feedback            String?
-  created_at          DateTime        @default(now())
-  updated_at          DateTime        @updatedAt
-
-  customer        Customer @relation(fields: [customer_id], references: [id])
-  salesConsultant User     @relation("SalesConsultant", fields: [sales_consultant_id], references: [id], onDelete: Restrict)
-}
-
-model Vin {
-  id                       String    @id @default(cuid())
-  vin_number               String    @unique
-  model                    String
-  version                  String
-  color                    String
-  year                     Int
-  status                   String    @default("AVAILABLE") // VinStatus enum
-  arrival_date             DateTime?
-  allocated_to_contract_id String?   @unique
-  created_at               DateTime  @default(now())
-  updated_at               DateTime  @updatedAt
-
-  allocatedContract Contract?      @relation("VinToContract", fields: [allocated_to_contract_id], references: [id])
-  pdsChecklists     PDSChecklist[]
-
-  @@index([vin_number])
-  @@index([status])
-}
-
-model Contract {
-  id               String         @id @default(cuid())
-  contract_number  String         @unique
-  quotation_id     String
-  customer_id      String
-  vin_id           String?
-  total_amount     Decimal
-  deposit_amount   Decimal
-  remaining_amount Decimal
-  payment_method   String?        // PaymentMethod enum
-  contract_date    DateTime
-  delivery_date    DateTime?
-  status           String         @default("ACTIVE")
-  created_by_id    String
-  created_at       DateTime       @default(now())
-  updated_at       DateTime       @updatedAt
-
-  quotation     Quotation      @relation(fields: [quotation_id], references: [id])
-  customer      Customer       @relation(fields: [customer_id], references: [id])
-  vin           Vin?           @relation("VinToContract")
-  createdBy     User           @relation("ContractCreator", fields: [created_by_id], references: [id], onDelete: Restrict)
-  deposits      Deposit[]
-  pdsChecklists PDSChecklist[]
-}
-
-model Deposit {
-  id              String        @id @default(cuid())
-  receipt_number  String        @unique
-  customer_id     String?
-  customer_name   String
-  contract_id     String?
-  contract_number String?
-  amount          Decimal
-  payment_method  String        // PaymentMethod enum
-  status          String        @default("PAID") // DepositStatus enum
-  notes           String?
-  received_by_id  String
-  created_at      DateTime      @default(now())
-  updated_at      DateTime      @updatedAt
-
-  customer   Customer? @relation(fields: [customer_id], references: [id])
-  contract   Contract? @relation(fields: [contract_id], references: [id])
-  receivedBy User      @relation("DepositReceiver", fields: [received_by_id], references: [id], onDelete: Restrict)
-}
-
-model PDSChecklist {
-  id                  String    @id @default(cuid())
-  contract_id         String
-  vin_id              String
-  exterior_check      String?   // JSON
-  interior_check      String?   // JSON
-  mechanical_check    String?   // JSON
-  documentation_check String?   // JSON
-  photos              String?   // JSON array
-  inspector_id        String
-  customer_signature  String?
-  inspector_signature String?
-  delivery_date       DateTime?
-  created_at          DateTime  @default(now())
-  updated_at          DateTime  @updatedAt
-
-  contract  Contract @relation(fields: [contract_id], references: [id])
-  vin       Vin      @relation(fields: [vin_id], references: [id])
-  inspector User     @relation("PDSInspector", fields: [inspector_id], references: [id])
-}
-
-//=============================================================================
-// MODULE 4: SERVICE
-//=============================================================================
 
 model ServiceQuote {
-  id           String   @id @default(cuid())
+  id         String   @id @default(cuid())
   quote_number String   @unique
   customer_id  String
-  vehicle_info String   // JSON
-  services     String   // JSON
-  parts        String   // JSON
+  vehicle_info String
+  services     String
+  parts        String
   total_labor  Decimal
   total_parts  Decimal
   sub_total    Decimal
@@ -473,433 +572,82 @@ model ServiceQuote {
   expiry_date  DateTime
   notes        String?
   created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
-
-  customer Customer @relation(fields: [customer_id], references: [id])
-  advisor  User     @relation("ServiceAdvisorQuote", fields: [advisor_id], references: [id])
-}
-
-model ServiceAppointment {
-  id             String                   @id @default(cuid())
-  customer_id    String
-  vehicle_info   String                   // JSON
-  service_type   String
-  scheduled_date DateTime
-  scheduled_time String
-  status         String                   @default("SCHEDULED") // ServiceAppointmentStatus enum
-  advisor_id     String
-  bay_number     String?
-  notes          String?
-  created_at     DateTime                 @default(now())
-  updated_at     DateTime                 @updatedAt
-
-  customer     Customer      @relation(fields: [customer_id], references: [id])
-  advisor      User          @relation("ServiceAdvisor", fields: [advisor_id], references: [id])
-  repairOrders RepairOrder[]
-}
-
-model RepairOrder {
-  id                  String            @id @default(cuid())
-  ro_number           String            @unique
-  appointment_id      String?
-  customer_id         String
-  vehicle_info        String            // JSON
-  mileage             Int?
-  fuel_level          String?
-  customer_complaints String?
-  inspection_notes    String?
-  status              String            @default("PENDING") // RepairOrderStatus enum
-  advisor_id          String
-  technician_id       String?
-  bay_number          String?
-  estimated_completion DateTime?
-  actual_completion    DateTime?
-  created_at          DateTime          @default(now())
-  updated_at          DateTime          @updatedAt
-
-  appointment   ServiceAppointment? @relation(fields: [appointment_id], references: [id])
-  customer      Customer            @relation(fields: [customer_id], references: [id])
-  advisor       User                @relation("ROAdvisor", fields: [advisor_id], references: [id])
-  technician    User?               @relation("ROTechnician", fields: [technician_id], references: [id])
-  lineItems     ROLineItem[]
-  workLogs      WorkLog[]
-  qcChecklists  QCChecklist[]
-  bayAssignments BayAssignment[]
-
-  @@index([ro_number])
-  @@index([status])
-}
-
-model ServiceBay {
-  id            String    @id @default(cuid())
-  name          String
-  location      String?
-  capacity      String?
-  equipment     String?    // JSON array
-  status        String    @default("ACTIVE")
-  is_available  Boolean   @default(true)
-  created_at    DateTime  @default(now())
-  updated_at    DateTime  @updatedAt
-
-  assignments   BayAssignment[]
-  statusLogs    BayStatusLog[]
-
-  @@map("service_bays")
-}
-
-model BayAssignment {
-  id                String    @id @default(cuid())
-  bay_id            String
-  repair_order_id   String
-  assigned_at       DateTime  @default(now())
-  started_at        DateTime?
-  estimated_end     DateTime?
-  actual_end        DateTime?
-  status            String    @default("ASSIGNED")
-  progress_percent  Int       @default(0)
-  delay_minutes     Int       @default(0)
-  notes             String?
-  created_at        DateTime  @default(now())
-  updated_at        DateTime  @updatedAt
-
-  bay           ServiceBay   @relation(fields: [bay_id], references: [id])
-  repairOrder   RepairOrder  @relation(fields: [repair_order_id], references: [id])
-  statusLogs    BayStatusLog[]
-
-  @@map("bay_assignments")
-}
-
-model BayStatusLog {
-  id             String    @id @default(cuid())
-  bay_id         String
-  assignment_id  String?
-  status         String
-  changed_at     DateTime  @default(now())
-  changed_by     String?
-  notes          String?
-
-  bay        ServiceBay     @relation(fields: [bay_id], references: [id])
-  assignment BayAssignment? @relation(fields: [assignment_id], references: [id])
-  changedBy  User?          @relation("BayStatusChanger", fields: [changed_by], references: [id])
-
-  @@map("bay_status_logs")
-}
-
-model ROLineItem {
-  id          String   @id @default(cuid())
-  ro_id       String
-  item_type   String
-  item_code   String
-  item_name   String
-  quantity    Decimal
-  unit_price  Decimal
-  total_price Decimal
-  created_at  DateTime @default(now())
-
-  repairOrder RepairOrder @relation(fields: [ro_id], references: [id])
-}
-
-model WorkLog {
-  id               String   @id @default(cuid())
-  ro_id            String
-  technician_id    String
-  work_description String
-  hours_spent      Decimal?
-  status           String
-  photos           String?  // JSON
-  notes            String?
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
-
-  repairOrder RepairOrder @relation(fields: [ro_id], references: [id])
-  technician  User        @relation(fields: [technician_id], references: [id])
-}
-
-model QCChecklist {
-  id              String   @id @default(cuid())
-  ro_id           String
-  checklist_items String   // JSON
-  photos          String?  // JSON
-  qc_result       String
-  qc_by_id        String
-  rework_notes    String?
-  created_at      DateTime @default(now())
-
-  repairOrder RepairOrder @relation(fields: [ro_id], references: [id])
-  qcBy        User        @relation(fields: [qc_by_id], references: [id])
-}
-
-//=============================================================================
-// MODULE 5: PARTS
-//=============================================================================
-
-model Part {
-  id          String   @id @default(cuid())
-  part_number String   @unique
-  name        String
-  description String?
-  category    String
-  quantity    Int      @default(0)
-  min_stock   Int      @default(10)
-  max_stock   Int      @default(100)
-  unit_price  Decimal
-  cost_price  Decimal
-  supplier_id String?
-  location    String?
-  status      String   @default("ACTIVE")
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-
-  supplier        Supplier?       @relation(fields: [supplier_id], references: [id])
-  stockMovements  StockMovement[]
-  poLineItems     POLineItem[]
-  stockTakeItems  StockTakeItem[]
-
-  @@index([part_number])
-  @@index([category])
-}
-
-model Supplier {
-  id             String   @id @default(cuid())
-  code           String   @unique
-  name           String
-  contact_person String?
-  phone          String?
-  email          String?
-  address        String?
-  payment_terms  String?
-  status         String   @default("ACTIVE")
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
-
-  parts          Part[]
-  purchaseOrders PurchaseOrder[]
+  updated_at DateTime @default(now())
+  User         User     @relation(fields: [advisor_id], references: [id])
+  Customer     Customer @relation(fields: [customer_id], references: [id])
 }
 
 model StockMovement {
-  id             String            @id @default(cuid())
+  id         String   @id @default(cuid())
   part_id        String
-  type           String            // StockMovementType enum
+  type           String
   quantity       Int
   reference_type String?
   reference_id   String?
   notes          String?
   user_id        String
-  created_at     DateTime          @default(now())
+  created_at     DateTime @default(now())
+  User           User     @relation(fields: [user_id], references: [id])
+  Part           Part     @relation(fields: [part_id], references: [id])
 
-  part Part @relation(fields: [part_id], references: [id])
-  user User @relation(fields: [user_id], references: [id])
-
-  @@index([part_id])
   @@index([created_at])
-}
-
-model PurchaseOrder {
-  id                     String              @id @default(cuid())
-  po_number              String              @unique
-  supplier_id            String
-  status                 String              @default("DRAFT") // PurchaseOrderStatus enum
-  order_date             DateTime
-  expected_delivery_date DateTime?
-  actual_delivery_date   DateTime?
-  total_amount           Decimal
-  notes                  String?
-  created_by_id          String
-  created_at             DateTime            @default(now())
-  updated_at             DateTime            @updatedAt
-
-  supplier  Supplier     @relation(fields: [supplier_id], references: [id])
-  createdBy User         @relation("POCreator", fields: [created_by_id], references: [id])
-  lineItems POLineItem[]
-}
-
-model POLineItem {
-  id                String   @id @default(cuid())
-  po_id             String
-  part_id           String
-  quantity          Int
-  unit_price        Decimal
-  total_price       Decimal
-  received_quantity Int      @default(0)
-  created_at        DateTime @default(now())
-
-  purchaseOrder PurchaseOrder @relation(fields: [po_id], references: [id])
-  part          Part          @relation(fields: [part_id], references: [id])
+  @@index([part_id])
 }
 
 model StockTake {
-  id             String    @id @default(cuid())
-  session_number String    @unique
-  session_date   DateTime
-  status         String    @default("IN_PROGRESS")
-  counted_by_id  String
-  approved_by_id String?
-  notes          String?
-  created_at     DateTime  @default(now())
-  completed_at   DateTime?
-
-  countedBy  User            @relation("StockTakeCounter", fields: [counted_by_id], references: [id])
-  approvedBy User?           @relation("StockTakeApprover", fields: [approved_by_id], references: [id])
-  items      StockTakeItem[]
+  id         String   @id @default(cuid())
+  session_number                      String          @unique
+  session_date                        DateTime
+  status                              String          @default("IN_PROGRESS")
+  counted_by_id                       String
+  approved_by_id                      String?
+  notes                               String?
+  created_at                          DateTime        @default(now())
+  completed_at                        DateTime?
+  User_StockTake_approved_by_idToUser User?           @relation("StockTake_approved_by_idToUser", fields: [approved_by_id], references: [id])
+  User_StockTake_counted_by_idToUser  User            @relation("StockTake_counted_by_idToUser", fields: [counted_by_id], references: [id])
+  StockTakeItem                       StockTakeItem[]
 }
 
 model StockTakeItem {
-  id              String   @id @default(cuid())
+  id         String   @id @default(cuid())
   stock_take_id   String
   part_id         String
   system_quantity Int
   actual_quantity Int
   variance        Int
   notes           String?
-  created_at      DateTime @default(now())
-
-  stockTake StockTake @relation(fields: [stock_take_id], references: [id])
-  part      Part      @relation(fields: [part_id], references: [id])
+  created_at      DateTime  @default(now())
+  Part            Part      @relation(fields: [part_id], references: [id])
+  StockTake       StockTake @relation(fields: [stock_take_id], references: [id])
 }
 
-//=============================================================================
-// MODULE 6: INSURANCE
-//=============================================================================
-
-model InsuranceContract {
-  id                String                  @id @default(cuid())
-  contract_number   String                  @unique
-  customer_id       String
-  vehicle_id        String?
-  insurance_type    String
-  insurance_company String
-  policy_number     String
-  premium_amount    Decimal
-  coverage_amount   Decimal
-  start_date        DateTime
-  end_date          DateTime
-  status            String                  @default("ACTIVE") // InsuranceContractStatus enum
-  notes             String?
-  created_by_id     String
-  created_at        DateTime                @default(now())
-  updated_at        DateTime                @updatedAt
-
-  customer Customer         @relation(fields: [customer_id], references: [id])
-  createdBy User             @relation("InsuranceCreator", fields: [created_by_id], references: [id])
-  claims   InsuranceClaim[]
+model Supplier {
+  id         String   @id @default(cuid())
+  code           String          @unique
+  name           String
+  contact_person String?
+  phone          String?
+  email          String?
+  address        String?
+  payment_terms  String?
+  status         String          @default("ACTIVE")
+  created_at     DateTime        @default(now())
+  updated_at DateTime @default(now())
+  Part           Part[]
+  PurchaseOrder  PurchaseOrder[]
 }
 
-model InsuranceClaim {
-  id                   String               @id @default(cuid())
-  claim_number         String               @unique
-  contract_id          String
-  incident_date        DateTime
-  incident_type        String
-  incident_description String
-  claim_amount         Decimal
-  approved_amount      Decimal?
-  status               String               @default("SUBMITTED") // InsuranceClaimStatus enum
-  documents            String?              // JSON array
-  notes                String?
-  reviewed_by_id       String?
-  reviewed_at          DateTime?
-  paid_at              DateTime?
-  created_at           DateTime             @default(now())
-  updated_at           DateTime             @updatedAt
-
-  contract   InsuranceContract @relation(fields: [contract_id], references: [id])
-  reviewedBy User?             @relation("ClaimReviewer", fields: [reviewed_by_id], references: [id])
-}
-
-//=============================================================================
-// MODULE 7: ACCOUNTING
-//=============================================================================
-
-model Invoice {
-  id             String   @id @default(cuid())
-  invoice_number String   @unique
-  customer_id    String
-  invoice_type   String
-  reference_id   String?
-  invoice_date   DateTime
-  due_date       DateTime
-  sub_total      Decimal
-  vat            Decimal
-  total_amount   Decimal
-  paid_amount    Decimal  @default(0)
-  status         String   @default("UNPAID")
-  notes          String?
-  created_by_id  String
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
-
-  customer  Customer  @relation(fields: [customer_id], references: [id])
-  createdBy User      @relation("InvoiceCreator", fields: [created_by_id], references: [id])
-  payments  Payment[]
-
-  @@index([invoice_number])
-  @@index([status])
-}
-
-model Payment {
-  id               String        @id @default(cuid())
-  payment_number   String        @unique
-  invoice_id       String
-  payment_date     DateTime
-  amount           Decimal
-  payment_method   String        // PaymentMethod enum
-  reference_number String?
-  notes            String?
-  received_by_id   String
-  created_at       DateTime      @default(now())
-
-  invoice    Invoice @relation(fields: [invoice_id], references: [id])
-  receivedBy User    @relation("PaymentReceiver", fields: [received_by_id], references: [id])
-}
-
-model Transaction {
-  id               String          @id @default(cuid())
-  transaction_date DateTime
-  type             String          // TransactionType enum
-  account_code     String
-  description      String
-  debit            Decimal         @default(0)
-  credit           Decimal         @default(0)
-  reference_type   String?
-  reference_id     String?
-  created_by_id    String
-  created_at       DateTime        @default(now())
-
-  createdBy User @relation("TransactionCreator", fields: [created_by_id], references: [id])
-}
-
-model FixedAsset {
-  id                        String                 @id @default(cuid())
-  asset_code                String                 @unique
-  asset_name                String
-  category                  String
-  acquisition_date          DateTime
-  acquisition_cost          Decimal
-  useful_life_years         Int
-  depreciation_method       String
-  accumulated_depreciation  Decimal                @default(0)
-  net_book_value            Decimal
-  location                  String?
-  status                    String                 @default("ACTIVE")
-  created_at                DateTime               @default(now())
-  updated_at                DateTime               @updatedAt
-  depreciation_schedules DepreciationSchedule[]
-}
-
-model DepreciationSchedule {
-  id                       String   @id @default(cuid())
-  asset_id                 String
-  period_month             String
-  depreciation_amount      Decimal
-  accumulated_depreciation Decimal
-  net_book_value           Decimal
-  created_at               DateTime @default(now())
-
-  asset FixedAsset @relation(fields: [asset_id], references: [id])
+model SystemMetric {
+  id         String   @id @default(cuid())
+  metric_type String
+  value       Decimal
+  unit        String?
+  timestamp   DateTime @default(now())
 }
 
 model TaxDeclaration {
-  id                 String    @id @default(cuid())
+  id         String   @id @default(cuid())
   declaration_number String    @unique
   tax_type           String
   period             String
@@ -910,45 +658,585 @@ model TaxDeclaration {
   payment_date       DateTime?
   created_by_id      String
   created_at         DateTime  @default(now())
-  updated_at         DateTime  @updatedAt
-
-  createdBy User @relation("TaxCreator", fields: [created_by_id], references: [id])
+  updated_at DateTime @default(now())
+  User               User      @relation(fields: [created_by_id], references: [id])
 }
 
-//=============================================================================
-// SUPPORTING ENTITIES
-//=============================================================================
-
-model VehicleModel {
+model TestDrive {
   id         String   @id @default(cuid())
-  model_code String   @unique
-  model_name String
-  category   String?
+  customer_id         String
+  model               String
+  scheduled_date      DateTime
+  scheduled_time      String
+  status              String   @default("SCHEDULED")
+  sales_consultant_id String
+  feedback            String?
+  created_at          DateTime @default(now())
+  updated_at DateTime @default(now())
+  User                User     @relation(fields: [sales_consultant_id], references: [id])
+  Customer            Customer @relation(fields: [customer_id], references: [id])
+}
+
+model Transaction {
+  id         String   @id @default(cuid())
+  transaction_date DateTime
+  type             String
+  account_code     String
+  description      String
+  debit            Decimal  @default(0)
+  credit           Decimal  @default(0)
+  reference_type   String?
+  reference_id     String?
+  created_by_id    String
+  created_at       DateTime @default(now())
+  User             User     @relation(fields: [created_by_id], references: [id])
+}
+
+model User {
+  id                                          String               @id @default(cuid())
+  email                                       String               @unique
+  password_hash                               String
+  name                                        String
+  role                                        String
+  role_id                                     String?
+  department                                  String?
+  phone                                       String?
+  status                                      String               @default("ACTIVE")
+  last_login                                  DateTime?
+  failed_login_attempts                       Int                  @default(0)
+  password_changed_at                         DateTime?
+  is_active                                   Boolean              @default(true)
+  deleted_at                                  DateTime?
+  created_at                                  DateTime             @default(now())
+  updated_at                                  DateTime             @default(now())
+  ActivityLog                                 ActivityLog[]
+  Complaint                                   Complaint[]
+  Contract                                    Contract[]
+  Deposit                                     Deposit[]
+  InsuranceClaim                              InsuranceClaim[]
+  InsuranceContract                           InsuranceContract[]
+  Interaction                                 Interaction[]
+  Invoice                                     Invoice[]
+  Lead                                        Lead[]
+  LeadHistory                                 LeadHistory[]
+  MarketingCampaign                           MarketingCampaign[]
+  PDSChecklist                                PDSChecklist[]
+  Payment                                     Payment[]
+  PurchaseOrder                               PurchaseOrder[]
+  QCChecklist                                 QCChecklist[]
+  Quotation                                   Quotation[]
+  RepairOrder_RepairOrder_technician_idToUser RepairOrder[]        @relation("RepairOrder_technician_idToUser")
+  RepairOrder_RepairOrder_advisor_idToUser    RepairOrder[]        @relation("RepairOrder_advisor_idToUser")
+  ServiceAppointment                          ServiceAppointment[]
+  ServiceQuote                                ServiceQuote[]
+  StockMovement                               StockMovement[]
+  StockTake_StockTake_approved_by_idToUser    StockTake[]          @relation("StockTake_approved_by_idToUser")
+  StockTake_StockTake_counted_by_idToUser     StockTake[]          @relation("StockTake_counted_by_idToUser")
+  TaxDeclaration                              TaxDeclaration[]
+  TestDrive                                   TestDrive[]
+  Transaction                                 Transaction[]
+  Role                                        Role?                @relation(fields: [role_id], references: [id])
+  WorkLog                                     WorkLog[]
+  bay_status_logs                             bay_status_logs[]
+  employees                                   employees?
+  system_settings                             system_settings[]
+}
+
+model Vin {
+  id         String   @id @default(cuid())
+  vin_number               String         @unique
+  model                    String
+  version                  String
+  color                    String
+  year                     Int
+  status                   String         @default("AVAILABLE")
+  arrival_date             DateTime?
+  allocated_to_contract_id String?        @unique
+  created_at               DateTime       @default(now())
+  updated_at DateTime @default(now())
+  PDSChecklist             PDSChecklist[]
+  Contract                 Contract?      @relation(fields: [allocated_to_contract_id], references: [id])
+
+  @@index([status])
+  @@index([vin_number])
+}
+
+model WorkLog {
+  id         String   @id @default(cuid())
+  ro_id            String
+  technician_id    String
+  work_description String
+  hours_spent      Decimal?
+  status           String
+  photos           String?
+  notes            String?
+  created_at       DateTime    @default(now())
+  updated_at DateTime @default(now())
+  User             User        @relation(fields: [technician_id], references: [id])
+  RepairOrder      RepairOrder @relation(fields: [ro_id], references: [id])
+}
+
+model accessories {
+  id         String   @id @default(cuid())
+  accessory_code         String    @unique
+  accessory_name         String
+  category               String
+  price                  Decimal
+  installation_required  Boolean   @default(false)
+  warranty_period_months Int       @default(12)
+  status                 String    @default("ACTIVE")
+  deleted_at             DateTime?
+  created_at             DateTime  @default(now())
+  updated_at DateTime @default(now())
+}
+
+model bay_assignments {
+  id         String   @id @default(cuid())
+  bay_id           String
+  repair_order_id  String
+  assigned_at      DateTime          @default(now())
+  started_at       DateTime?
+  estimated_end    DateTime?
+  actual_end       DateTime?
+  status           String            @default("ASSIGNED")
+  progress_percent Int               @default(0)
+  delay_minutes    Int               @default(0)
+  notes            String?
+  created_at       DateTime          @default(now())
+  updated_at DateTime @default(now())
+  RepairOrder      RepairOrder       @relation(fields: [repair_order_id], references: [id])
+  bay_status_logs  bay_status_logs[]
+}
+
+model bay_status_logs {
+  id         String   @id @default(cuid())
+  bay_id          String
+  assignment_id   String?
+  status          String
+  changed_at      DateTime         @default(now())
+  changed_by      String?
+  notes           String?
+  User            User?            @relation(fields: [changed_by], references: [id])
+  bay_assignments bay_assignments? @relation(fields: [assignment_id], references: [id])
+}
+
+model employees {
+  id         String   @id @default(cuid())
+  user_id            String?             @unique
+  employee_code      String              @unique
+  full_name          String
+  department_id      String?
+  position_id        String?
+  level_id           String?
+  join_date          DateTime?
+  status             String              @default("ACTIVE")
+  created_at         DateTime            @default(now())
+  updated_at DateTime @default(now())
+  deleted_at         DateTime?
+  master_levels      master_levels?      @relation(fields: [level_id], references: [id])
+  master_positions   master_positions?   @relation(fields: [position_id], references: [id])
+  master_departments master_departments? @relation(fields: [department_id], references: [id])
+  User               User?               @relation(fields: [user_id], references: [id])
+  warehouses         warehouses[]
+}
+
+model master_departments {
+  id         String   @id @default(cuid())
+  department_code String      @unique
+  department_name String
+  description     String?
+  status          String      @default("ACTIVE")
+  created_at      DateTime    @default(now())
+  updated_at DateTime @default(now())
+  employees       employees[]
+}
+
+model master_levels {
+  id         String   @id @default(cuid())
+  level_code  String      @unique
+  level_name  String
+  description String?
+  status      String      @default("ACTIVE")
+  created_at  DateTime    @default(now())
+  updated_at DateTime @default(now())
+  employees   employees[]
+}
+
+model master_positions {
+  id         String   @id @default(cuid())
+  position_code String      @unique
+  position_name String
+  description   String?
+  status        String      @default("ACTIVE")
+  created_at    DateTime    @default(now())
+  updated_at DateTime @default(now())
+  employees     employees[]
+}
+
+model role_permissions {
+  role_id       String
+  permission_id String
+  Permission    Permission @relation(fields: [permission_id], references: [id], onDelete: Cascade)
+  Role          Role       @relation(fields: [role_id], references: [id], onDelete: Cascade)
+
+  @@id([role_id, permission_id])
+}
+
+model scoring_rules {
+  id         String   @id @default(cuid())
+  rule_code            String    @unique
+  rule_name            String
+  category             String
+  weight_percentage    Int       @default(10)
+  min_score            Int       @default(0)
+  max_score            Int       @default(100)
+  condition_expression String
+  description          String?
+  status               String    @default("ACTIVE")
+  deleted_at           DateTime?
+  created_at           DateTime  @default(now())
+  updated_at DateTime @default(now())
+}
+
+model service_bays {
+  id         String   @id @default(cuid())
+  bay_code          String    @unique
+  bay_name          String
+  bay_type          String
+  capacity_vehicles Int       @default(1)
+  location          String
+  description       String?
+  status            String    @default("ACTIVE")
+  deleted_at        DateTime?
+  created_at        DateTime  @default(now())
+  updated_at DateTime @default(now())
+}
+
+model service_catalogs {
+  id         String   @id @default(cuid())
+  service_code   String    @unique
+  service_name   String
+  category       String
+  duration_hours Decimal   @default(1.0)
+  base_price     Decimal
+  requires_parts Boolean   @default(false)
+  status         String    @default("ACTIVE")
+  deleted_at     DateTime?
+  created_at     DateTime  @default(now())
+  updated_at DateTime @default(now())
+}
+
+model system_settings {
+  id            String    @id @default(cuid())
+  setting_code  String    @unique
+  setting_name  String
+  category      String
+  data_type     String
+  default_value String
+  current_value String
+  description   String?
+  status        String    @default("ACTIVE")
+  updated_by    String?
+  deleted_at    DateTime?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @default(now())
+  User          User?     @relation(fields: [updated_by], references: [id])
+}
+
+model uoms {
+  id         String   @id @default(cuid())
+  uom_code    String    @unique
+  uom_name    String
+  description String?
+  status      String    @default("ACTIVE")
+  created_at  DateTime  @default(now())
+  updated_at DateTime @default(now())
+  deleted_at  DateTime?
+}
+
+model vehicle_models {
+  id         String   @id @default(cuid())
+  model_code String    @unique
+  model_name String    @unique
+  category   String
   base_price Decimal
-  status     String   @default("ACTIVE")
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  status     String    @default("ACTIVE")
+  deleted_at DateTime?
+  created_at DateTime  @default(now())
+  updated_at DateTime @default(now())
 }
 
-model Accessory {
-  id             String   @id @default(cuid())
-  accessory_code String   @unique
-  accessory_name String
-  category       String?
-  price          Decimal
-  status         String   @default("ACTIVE")
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
+model warehouses {
+  id         String   @id @default(cuid())
+  warehouse_code   String     @unique
+  warehouse_name   String     @unique
+  location_address String?
+  manager_id       String?
+  is_active        Boolean    @default(true)
+  created_at       DateTime   @default(now())
+  updated_at DateTime @default(now())
+  deleted_at       DateTime?
+  employees        employees? @relation(fields: [manager_id], references: [id])
 }
 
-model ServiceCatalog {
-  id           String   @id @default(cuid())
-  service_code String   @unique
-  service_name String
-  category     String
-  labor_hours  Decimal
-  labor_rate   Decimal
-  status       String   @default("ACTIVE")
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
+model provinces {
+  id         String   @id @default(cuid())
+  province_code   String    @unique
+  province_name   String
+  status          String    @default("ACTIVE")
+  created_at      DateTime  @default(now())
+  updated_at DateTime @default(now())
+  deleted_at      DateTime?
+  districts       districts[]
+}
+
+model districts {
+  id         String   @id @default(cuid())
+  district_code             String      @unique
+  district_name             String
+  province_code             String
+  distance_from_showroom_km Decimal?
+  service_zone              String?
+  status                    String      @default("ACTIVE")
+  created_at                DateTime    @default(now())
+  updated_at DateTime @default(now())
+  deleted_at                DateTime?
+  provinces                 provinces   @relation(fields: [province_code], references: [province_code])
+  wards                     wards[]
+}
+
+model wards {
+  id         String   @id @default(cuid())
+  ward_code       String    @unique
+  ward_name       String
+  district_code   String
+  postal_code     String?
+  status          String    @default("ACTIVE")
+  created_at      DateTime  @default(now())
+  updated_at DateTime @default(now())
+  deleted_at      DateTime?
+  districts       districts @relation(fields: [district_code], references: [district_code])
+}
+
+model vehicle_colors {
+  id         String   @id @default(cuid())
+  color_code  String    @unique
+  color_name  String
+  hex_code    String
+  status      String    @default("ACTIVE")
+  created_at  DateTime  @default(now())
+  updated_at DateTime @default(now())
+  deleted_at  DateTime?
+}
+
+model vehicle_engines {
+  id         String   @id @default(cuid())
+  engine_code      String    @unique
+  engine_name      String
+  engine_capacity  String?
+  fuel_type        String?
+  status           String    @default("ACTIVE")
+  created_at       DateTime  @default(now())
+  updated_at DateTime @default(now())
+  deleted_at       DateTime?
+}
+
+model insurance_companies {
+  id         String   @id @default(cuid())
+  company_code    String    @unique
+  company_name    String
+  contact_person  String?
+  phone           String?
+  email           String?
+  address         String?
+  status          String    @default("ACTIVE")
+  created_at      DateTime  @default(now())
+  updated_at DateTime @default(now())
+  deleted_at      DateTime?
+}
+
+model insurance_products {
+  id         String   @id @default(cuid())
+  product_code            String    @unique
+  product_name            String
+  insurance_type          String
+  premium_amount          Decimal
+  coverage_amount         Decimal
+  deductible_amount       Decimal?
+  max_claim_amount        Decimal?
+  status                  String    @default("ACTIVE")
+  created_at              DateTime  @default(now())
+  updated_at DateTime @default(now())
+  deleted_at              DateTime?
+}
+
+model holidays {
+  id         String   @id @default(cuid())
+  holiday_code   String    @unique
+  holiday_name   String
+  holiday_date   String
+  is_recurring   Boolean   @default(false)
+  status         String    @default("ACTIVE")
+  created_at     DateTime  @default(now())
+  updated_at DateTime @default(now())
+  deleted_at     DateTime?
+}
+
+model commission_structures {
+  id         String   @id @default(cuid())
+  commission_code     String    @unique
+  commission_name     String
+  type                String
+  role_id             String?
+  target              Decimal?
+  rate_percent        Decimal?
+  applicable_products String?
+  status              String    @default("ACTIVE")
+  created_at          DateTime  @default(now())
+  updated_at DateTime @default(now())
+  deleted_at          DateTime?
+}
+
+model interest_rates {
+  id         String   @id @default(cuid())
+  rate_code         String    @unique
+  rate_name         String
+  rate_type         String
+  rate_percent      Decimal
+  min_amount        Decimal?
+  max_amount        Decimal?
+  effective_from    String
+  effective_to       String?
+  status            String    @default("ACTIVE")
+  created_at        DateTime  @default(now())
+  updated_at DateTime @default(now())
+  deleted_at        DateTime?
+}
+
+model bank_accounts {
+  id         String   @id @default(cuid())
+  account_code      String    @unique
+  account_name      String
+  bank_name         String
+  account_number    String    @unique
+  branch_name       String?
+  account_type      String?
+  currency          String    @default("VND")
+  status            String    @default("ACTIVE")
+  created_at        DateTime  @default(now())
+  updated_at DateTime @default(now())
+  deleted_at        DateTime?
+}
+
+model payment_methods {
+  id         String   @id @default(cuid())
+  method_code      String    @unique
+  method_name      String
+  method_type      String
+  description      String?
+  processing_fee   Decimal   @default(0)
+  status           String    @default("ACTIVE")
+  created_at       DateTime  @default(now())
+  updated_at DateTime @default(now())
+  deleted_at       DateTime?
+}
+
+model tax_rates {
+  id         String   @id @default(cuid())
+  tax_code          String    @unique
+  tax_name          String
+  tax_type          String
+  rate_percent      Decimal
+  effective_from    String
+  effective_to       String?
+  description       String?
+  status            String    @default("ACTIVE")
+  created_at        DateTime  @default(now())
+  updated_at DateTime @default(now())
+  deleted_at        DateTime?
+}
+
+model account_codes {
+  id         String   @id @default(cuid())
+  account_code      String    @unique
+  account_name      String
+  account_type      String
+  parent_code       String?
+  description       String?
+  status            String    @default("ACTIVE")
+  created_at        DateTime  @default(now())
+  updated_at DateTime @default(now())
+  deleted_at        DateTime?
+}
+
+model promotions {
+  id         String   @id @default(cuid())
+  promotion_code      String    @unique
+  promotion_name      String
+  promotion_type      String
+  start_date          DateTime
+  end_date            DateTime
+  discount_percent     Decimal?
+  discount_amount     Decimal?
+  min_purchase_amount Decimal?
+  max_discount_amount Decimal?
+  description         String?
+  status              String    @default("ACTIVE")
+  created_at          DateTime  @default(now())
+  updated_at DateTime @default(now())
+  deleted_at          DateTime?
+}
+
+model warranty_types {
+  id         String   @id @default(cuid())
+  warranty_code        String    @unique
+  warranty_name        String
+  warranty_type        String
+  duration_months      Int
+  max_kilometers        Int?
+  description          String?
+  status               String    @default("ACTIVE")
+  created_at           DateTime  @default(now())
+  updated_at DateTime @default(now())
+  deleted_at           DateTime?
+}
+
+model part_categories {
+  id         String   @id @default(cuid())
+  category_code      String    @unique
+  category_name      String
+  parent_category_id String?
+  description        String?
+  status             String    @default("ACTIVE")
+  created_at         DateTime  @default(now())
+  updated_at DateTime @default(now())
+  deleted_at         DateTime?
+}
+
+model part_locations {
+  id         String   @id @default(cuid())
+  location_code  String    @unique
+  location_name  String
+  warehouse_id   String?
+  bay_id         String?
+  shelf_id       String?
+  description    String?
+  status         String    @default("ACTIVE")
+  created_at     DateTime  @default(now())
+  updated_at DateTime @default(now())
+  deleted_at     DateTime?
+}
+
+model service_types {
+  id         String   @id @default(cuid())
+  service_type_code     String    @unique
+  service_type_name     String
+  category              String
+  default_duration_hours Decimal   @default(1.0)
+  base_price            Decimal?
+  description           String?
+  status                String    @default("ACTIVE")
+  created_at            DateTime  @default(now())
+  updated_at DateTime @default(now())
+  deleted_at            DateTime?
 }

@@ -8,16 +8,16 @@ export async function getClaims(): Promise<InsuranceClaimDTO[]> {
   try {
     const claims = await prisma.insuranceClaim.findMany({
       include: {
-        contract: {
-          include: { customer: true }
+        InsuranceContract: {
+          include: { Customer: true }
         }
       },
       orderBy: { created_at: 'desc' }
     });
-    
+
     return claims.map((c: any) => ({
       ...c,
-      contract_number: c.contract.contract_number,
+      contract_number: c.InsuranceContract.contract_number,
       incident_date: c.incident_date.toISOString(),
       created_at: c.created_at.toISOString(),
       claim_amount: Number(c.claim_amount),

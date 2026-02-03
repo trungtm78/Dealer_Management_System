@@ -22,7 +22,8 @@ export function Sidebar({ className }: SidebarProps) {
     const pathname = usePathname();
     const router = useRouter();
     // State để quản lý việc mở rộng/thu gọn các nhóm menu. Mặc định mở CRM và Tổng quan.
-    const [expandedGroups, setExpandedGroups] = useState<string[]>(["CRM", "Tổng Quan"]);
+    const [expandedGroups, setExpandedGroups] = useState<string[]>(["CRM", "Tổng Quan", "Master Data"]);
+    const [expandedSubGroups, setExpandedSubGroups] = useState<string[]>([]);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
     // Toggle group expansion
@@ -31,6 +32,16 @@ export function Sidebar({ className }: SidebarProps) {
             prev.includes(title)
                 ? prev.filter((g) => g !== title)
                 : [...prev, title]
+        );
+    };
+
+    // Toggle sub-group expansion
+    const toggleSubGroup = (groupTitle: string, subGroupTitle: string) => {
+        const key = `${groupTitle}::${subGroupTitle}`;
+        setExpandedSubGroups((prev) =>
+            prev.includes(key)
+                ? prev.filter((sg) => sg !== key)
+                : [...prev, key]
         );
     };
 
@@ -81,7 +92,11 @@ export function Sidebar({ className }: SidebarProps) {
                         const isExpanded = expandedGroups.includes(group.title);
 
                         // Check if any child is active to highlight group potentially
-                        const isChildActive = group.items.some(item => pathname === item.href || pathname.startsWith(item.href));
+                        const isChildActive = group.items
+                            ? group.items.some(item => pathname === item.href || pathname.startsWith(item.href))
+                            : group.subGroups
+                                ? group.subGroups.some(sg => sg.items.some(item => pathname === item.href || pathname.startsWith(item.href)))
+                                : false;
 
                         return (
                             <div key={group.title} className="mb-2">
@@ -100,27 +115,78 @@ export function Sidebar({ className }: SidebarProps) {
                                     <ChevronRight className={cn("w-4 h-4 text-gray-400 transition-transform duration-300", isExpanded ? "rotate-90" : "rotate-0")} />
                                 </button>
 
-                                {/* Group Items (Collapsible) */}
-                                <div className={cn("ml-4 overflow-hidden transition-all duration-300", isExpanded ? "max-h-[1000px] opacity-100 mt-1" : "max-h-0 opacity-0")}>
-                                    <div className="space-y-0.5 border-l border-gray-100 pl-2">
-                                        {group.items.map((item) => {
-                                            const isActive = pathname === item.href;
-                                            const ItemIcon = item.icon;
-                                            return (
-                                                <Link key={item.id} href={item.href}>
-                                                    <div className={cn(
-                                                        "w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-200 mb-1",
-                                                        isActive
-                                                            ? "bg-[#E60012] text-white shadow-lg shadow-red-500/20 font-semibold"
-                                                            : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                                                    )}>
-                                                        <ItemIcon className="w-4 h-4 flex-shrink-0" />
-                                                        <span className="leading-tight">{item.label}</span>
+                                {/* Group Content (Items or SubGroups) */}
+                                <div className={cn("ml-4 overflow-hidden transition-all duration-300", isExpanded ? "max-h-[2000px] opacity-100 mt-1" : "max-h-0 opacity-0")}>
+                                    {group.items ? (
+                                        // Direct items (original 2-level structure)
+                                        <div className="space-y-0.5 border-l border-gray-100 pl-2">
+                                            {group.items.map((item) => {
+                                                const isActive = pathname === item.href;
+                                                const ItemIcon = item.icon;
+                                                return (
+                                                    <Link key={item.id} href={item.href}>
+                                                        <div className={cn(
+                                                            "w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-200 mb-1",
+                                                            isActive
+                                                                ? "bg-[#E60012] text-white shadow-lg shadow-red-500/20 font-semibold"
+                                                                : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                                                        )}>
+                                                            <ItemIcon className="w-4 h-4 flex-shrink-0" />
+                                                            <span className="leading-tight">{item.label}</span>
+                                                        </div>
+                                                    </Link>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : group.subGroups ? (
+                                        // Sub-groups (new 3-level structure)
+                                        <div className="space-y-1">
+                                            {group.subGroups.map((subGroup) => {
+                                                const subGroupKey = `${group.title}::${subGroup.title}`;
+                                                const isSubGroupExpanded = expandedSubGroups.includes(subGroupKey);
+                                                const isSubGroupActive = subGroup.items.some(item => pathname === item.href || pathname.startsWith(item.href));
+
+                                                return (
+                                                    <div key={subGroupKey}>
+                                                        {/* Sub-Group Header */}
+                                                        <button
+                                                            onClick={() => toggleSubGroup(group.title, subGroup.title)}
+                                                            className={cn(
+                                                                "w-full flex items-center justify-between px-2 py-1.5 rounded-md text-xs font-semibold transition-all duration-200",
+                                                                isSubGroupActive ? "text-[#E60012] bg-red-50" : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                                                            )}
+                                                        >
+                                                            <span>{subGroup.title}</span>
+                                                            <ChevronDown className={cn("w-3 h-3 transition-transform duration-300", isSubGroupExpanded ? "rotate-0" : "-rotate-90")} />
+                                                        </button>
+
+                                                        {/* Sub-Group Items */}
+                                                        <div className={cn("ml-2 overflow-hidden transition-all duration-300", isSubGroupExpanded ? "max-h-[500px] opacity-100 mt-0.5" : "max-h-0 opacity-0")}>
+                                                            <div className="space-y-0.5 border-l border-gray-100 pl-2">
+                                                                {subGroup.items.map((item) => {
+                                                                    const isActive = pathname === item.href;
+                                                                    const ItemIcon = item.icon;
+                                                                    return (
+                                                                        <Link key={item.id} href={item.href}>
+                                                                            <div className={cn(
+                                                                                "w-full flex items-center gap-2 px-2.5 py-1.5 text-sm rounded-md transition-all duration-200 mb-0.5",
+                                                                                isActive
+                                                                                    ? "bg-[#E60012] text-white shadow-md shadow-red-500/20 font-semibold"
+                                                                                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                                                                            )}>
+                                                                                <ItemIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                                                                                <span className="leading-tight text-xs">{item.label}</span>
+                                                                            </div>
+                                                                        </Link>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                </Link>
-                                            );
-                                        })}
-                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : null}
                                 </div>
                             </div>
                         );

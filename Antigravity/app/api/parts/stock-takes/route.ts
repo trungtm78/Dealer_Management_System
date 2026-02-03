@@ -14,9 +14,9 @@ export async function GET(request: NextRequest) {
     const stockTakes = await prisma.stockTake.findMany({
       where,
       include: {
-        items: {
+        StockTakeItem: {
           include: {
-            part: {
+            Part: {
               select: {
                 id: true,
                 part_number: true,
@@ -26,14 +26,14 @@ export async function GET(request: NextRequest) {
             }
           }
         },
-        countedBy: {
+        User_StockTake_counted_by_idToUser: {
           select: {
             id: true,
             name: true,
             email: true
           }
         },
-        approvedBy: {
+        User_StockTake_approved_by_idToUser: {
           select: {
             id: true,
             name: true,
@@ -76,9 +76,9 @@ export async function POST(request: NextRequest) {
         counted_by_id: '1'
       },
       include: {
-        items: {
+        StockTakeItem: {
           include: {
-            part: {
+            Part: {
               select: {
                 id: true,
                 part_number: true,
@@ -88,14 +88,14 @@ export async function POST(request: NextRequest) {
             }
           }
         },
-        countedBy: {
+        User_StockTake_counted_by_idToUser: {
           select: {
             id: true,
             name: true,
             email: true
           }
         },
-        approvedBy: {
+        User_StockTake_approved_by_idToUser: {
           select: {
             id: true,
             name: true,

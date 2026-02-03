@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
         delivery_date: { not: null }
       },
       include: {
-        customer: {
+        Customer: {
           select: {
             id: true,
             name: true,
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
             email: true
           }
         },
-        quotation: {
+        Quotation: {
           select: {
             id: true,
             quote_number: true,
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
             color: true
           }
         },
-        vin: {
+        Vin: {
           select: {
             id: true,
             vin_number: true,
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
             color: true
           }
         },
-        createdBy: {
+        User: {
           select: {
             id: true,
             name: true,
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
         delivery_date: delivery_date ? new Date(delivery_date) : null
       },
       include: {
-        customer: {
+        Customer: {
           select: {
             id: true,
             name: true,
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
             email: true
           }
         },
-        quotation: {
+        Quotation: {
           select: {
             id: true,
             quote_number: true,
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
             color: true
           }
         },
-        vin: {
+        Vin: {
           select: {
             id: true,
             vin_number: true,
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
             color: true
           }
         },
-        createdBy: {
+        User: {
           select: {
             id: true,
             name: true,

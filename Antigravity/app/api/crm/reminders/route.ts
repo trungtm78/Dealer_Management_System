@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     const reminders = await prisma.reminder.findMany({
       where,
       include: {
-        customer: {
+        Customer: {
           select: {
             id: true,
             name: true,
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
         status: 'PENDING'
       },
       include: {
-        customer: {
+        Customer: {
           select: {
             id: true,
             name: true,

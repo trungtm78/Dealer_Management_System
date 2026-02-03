@@ -1,0 +1,974 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+//=============================================================================
+// ENUMS (Simulated with String for SQLite compatibility)
+//=============================================================================
+// UserRole: ADMIN, MANAGER, SALES, SERVICE, PARTS, ACCOUNTING, INSURANCE
+// LeadSource: FACEBOOK, WEBSITE, WALK_IN, HOTLINE, REFERRAL, OTHER
+// LeadStatus: NEW, CONTACTED, QUALIFIED, PROPOSAL, NEGOTIATION, WON, DEAD
+// CustomerType: INDIVIDUAL, COMPANY
+// LoyaltyTier: BRONZE, SILVER, GOLD, PLATINUM, DIAMOND
+// QuotationStatus: DRAFT, SENT, APPROVED, CONTRACT, LOST, EXPIRED
+// TestDriveStatus: SCHEDULED, COMPLETED, CANCELLED, NO_SHOW
+// VinStatus: AVAILABLE, ALLOCATED, SOLD
+// DepositStatus: PAID, REFUNDED, CANCELLED
+// ServiceAppointmentStatus: SCHEDULED, CONFIRMED, ARRIVED, IN_PROGRESS, COMPLETED, CANCELLED
+// RepairOrderStatus: PENDING, IN_PROGRESS, QC, READY, DELIVERED
+// StockMovementType: IN, OUT, TRANSFER, ADJUSTMENT
+// PurchaseOrderStatus: DRAFT, SENT, CONFIRMED, RECEIVED, CLOSED
+// InsuranceContractStatus: ACTIVE, EXPIRED, CANCELLED
+// InsuranceClaimStatus: SUBMITTED, REVIEWING, APPROVED, PAID, REJECTED
+// PaymentMethod: CASH, CARD, TRANSFER
+// TransactionType: DEBIT, CREDIT
+// ActivityType: CALL, EMAIL, MEETING, NOTE, STAGE_CHANGE
+// ReminderType: MAINTENANCE, INSPECTION, INSURANCE, BIRTHDAY
+// ComplaintStatus: NEW, IN_PROGRESS, RESOLVED, CLOSED
+// CampaignType: SMS, EMAIL, SOCIAL, EVENT, ZALO, FACEBOOK
+// CampaignStatus: DRAFT, ACTIVE, PAUSED, COMPLETED
+
+//=============================================================================
+// MODULE 8: ADMIN
+//=============================================================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password_hash String
+  name          String
+  role          String    // UserRole enum
+  department    String?
+  phone         String?
+  status        String    @default("ACTIVE")
+  last_login    DateTime?
+  failed_login_attempts Int @default(0)
+  password_changed_at DateTime?
+  is_active     Boolean   @default(true)
+  deleted_at    DateTime?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  assignedLeads       Lead[]               @relation("AssignedTo")
+  activityLogs        ActivityLog[]
+  interactions        Interaction[]
+  testDrives          TestDrive[]          @relation("SalesConsultant")
+  quotations          Quotation[]          @relation("QuoteCreator")
+  contracts           Contract[]           @relation("ContractCreator")
+  deposits            Deposit[]            @relation("DepositReceiver")
+  serviceAppointments ServiceAppointment[] @relation("ServiceAdvisor")
+  repairOrdersAdvisor RepairOrder[]        @relation("ROAdvisor")
+  repairOrdersTech    RepairOrder[]        @relation("ROTechnician")
+  workLogs            WorkLog[]
+  qcChecklists        QCChecklist[]
+  stockMovements      StockMovement[]
+  purchaseOrders      PurchaseOrder[]      @relation("POCreator")
+  stockTakesCounted   StockTake[]          @relation("StockTakeCounter")
+  stockTakesApproved  StockTake[]          @relation("StockTakeApprover")
+  insuranceContracts  InsuranceContract[]  @relation("InsuranceCreator")
+  insuranceClaims     InsuranceClaim[]     @relation("ClaimReviewer")
+  invoices            Invoice[]            @relation("InvoiceCreator")
+  payments            Payment[]            @relation("PaymentReceiver")
+  accountingTrans     Transaction[]        @relation("TransactionCreator")
+  taxDeclarations     TaxDeclaration[]     @relation("TaxCreator")
+  complaints          Complaint[]          @relation("ComplaintAssignee")
+  campaigns           MarketingCampaign[]  @relation("CampaignCreator")
+  pdsInspections      PDSChecklist[]       @relation("PDSInspector")
+  serviceQuotes       ServiceQuote[]       @relation("ServiceAdvisorQuote")
+  leadHistories       LeadHistory[]        @relation("HistoryUser")
+  bayStatusLogs       BayStatusLog[]       @relation("BayStatusChanger")
+}
+
+model SystemSetting {
+  id             String   @id @default(cuid())
+  setting_code   String   @unique
+  setting_name   String
+  category       String   // ENUM: LEAD, SERVICE, CUSTOMER, SYSTEM
+  data_type      String   // ENUM: STRING, NUMBER, BOOLEAN, DATE
+  default_value  String
+  current_value  String   // Auto-set from default_value
+  description    String?
+  status         String   @default("ACTIVE") // ENUM: ACTIVE, INACTIVE
+  deleted_at     DateTime?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+//=============================================================================
+// MASTER DATA ENTITIES (CR-MD-002/003/004)
+//=============================================================================
+
+model ActivityLog {
+  id         String   @id @default(cuid())
+  user_id    String
+  action     String
+  entity     String
+  entity_id  String?
+  details    String?  
+  ip_address String?
+  created_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id])
+}
+
+model SystemMetric {
+  id          String   @id @default(cuid())
+  metric_type String
+  value       Decimal
+  unit        String?
+  timestamp   DateTime @default(now())
+}
+
+//=============================================================================
+// MODULE 2: CRM
+//=============================================================================
+
+model Lead {
+  id              String      @id @default(cuid())
+  name            String
+  phone           String
+  email           String?
+  address         String?
+  model_interest  String?
+  model_version   String?
+  budget          Decimal?
+  source          String      // LeadSource enum
+  status          String      @default("NEW") // LeadStatus enum
+  score           Int         @default(10)
+  notes           String?
+  customer_type   String?     // CustomerType enum
+  customer_id     String?
+  assigned_to_id  String?
+  deleted_at      DateTime?
+  created_at      DateTime    @default(now())
+  updated_at      DateTime    @updatedAt
+
+  customer     Customer?     @relation(fields: [customer_id], references: [id], onDelete: Restrict)
+  assignedTo   User?         @relation("AssignedTo", fields: [assigned_to_id], references: [id], onDelete: Restrict)
+  interactions Interaction[]
+  history      LeadHistory[]
+
+  @@index([phone])
+  @@index([status])
+  @@index([assigned_to_id])
+}
+
+model LeadHistory {
+  id            String   @id @default(cuid())
+  lead_id       String
+  changed_by_id String
+  field         String
+  old_value     String?
+  new_value     String?
+  created_at    DateTime @default(now())
+
+  lead      Lead @relation(fields: [lead_id], references: [id])
+  changedBy User @relation("HistoryUser", fields: [changed_by_id], references: [id])
+}
+
+model Customer {
+  id                    String       @id @default(cuid())
+  name                  String
+  type                  String       // CustomerType enum
+  phone                 String       @unique
+  mobile                String?
+  email                 String?
+  street                String?
+  ward                  String?
+  district              String?
+  city                  String?
+  vat                   String?
+  status                String       @default("ACTIVE") // LoyaltyTier enum
+  tier                  String       @default("BRONZE") // LoyaltyTier enum
+  points                Int          @default(0)
+  total_points          Int          @default(0)
+  tags                  String?      // JSON array
+  notes                 String?
+  member_since          DateTime     @default(now())
+  last_transaction_date DateTime?
+  deleted_at            DateTime?
+  created_at            DateTime     @default(now())
+  updated_at            DateTime     @updatedAt
+
+  leads               Lead[]
+  interactions        Interaction[]
+  quotations          Quotation[]
+  testDrives          TestDrive[]
+  contracts           Contract[]
+  deposits            Deposit[]
+  serviceAppointments ServiceAppointment[]
+  repairOrders        RepairOrder[]
+  insuranceContracts  InsuranceContract[]
+  invoices            Invoice[]
+  complaints          Complaint[]
+  reminders           Reminder[]
+  loyaltyTransactions LoyaltyTransaction[]
+  serviceQuotes       ServiceQuote[]
+
+  @@index([phone])
+  @@index([tier])
+}
+
+model Interaction {
+  id          String       @id @default(cuid())
+  lead_id     String?
+  customer_id String?
+  user_id     String
+  type        String       // ActivityType enum
+  outcome     String?
+  notes       String?
+  metadata    String?      // JSON
+  created_at  DateTime     @default(now())
+
+  lead     Lead?     @relation(fields: [lead_id], references: [id])
+  customer Customer? @relation(fields: [customer_id], references: [id])
+  user     User      @relation(fields: [user_id], references: [id])
+}
+
+model ScoringRule {
+  id                   String   @id @default(cuid())
+  rule_code            String   @unique
+  rule_name            String
+  category             String   // ENUM: LEAD, SERVICE, CUSTOMER, PERFORMANCE
+  weight_percentage    Int      @default(10)
+  min_score            Int      @default(0)
+  max_score            Int      @default(100)
+  condition_expression String   // SQL-like condition
+  description          String?
+  status               String   @default("ACTIVE") // ENUM: ACTIVE, INACTIVE
+  deleted_at           DateTime?
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
+
+  @@map("scoring_rules")
+}
+
+model ScoringCriteria {
+  id         String   @id @default(cuid())
+  category   String
+  name       String
+  score      Int
+  status     String   @default("ACTIVE")
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model Reminder {
+  id             String       @id @default(cuid())
+  customer_id    String
+  type           String       // ReminderType enum
+  scheduled_date DateTime
+  message        String?
+  channel        String?
+  status         String       @default("PENDING")
+  sent_at        DateTime?
+  created_at     DateTime     @default(now())
+
+  customer Customer @relation(fields: [customer_id], references: [id])
+}
+
+model LoyaltyTransaction {
+  id           String   @id @default(cuid())
+  customer_id  String
+  points       Int
+  type         String
+  reason       String
+  reference_id String?
+  created_at   DateTime @default(now())
+
+  customer Customer @relation(fields: [customer_id], references: [id])
+}
+
+model Complaint {
+  id             String          @id @default(cuid())
+  customer_id    String
+  category       String
+  priority       String
+  status         String          @default("NEW") // ComplaintStatus enum
+  description    String
+  resolution     String?
+  assigned_to_id String?
+  created_at     DateTime        @default(now())
+  updated_at     DateTime        @updatedAt
+  resolved_at    DateTime?
+
+  customer   Customer @relation(fields: [customer_id], references: [id])
+  assignedTo User?    @relation("ComplaintAssignee", fields: [assigned_to_id], references: [id])
+}
+
+model MarketingCampaign {
+  id              String         @id @default(cuid())
+  name            String
+  description     String?
+  type            String         // CampaignType enum
+  status          String         @default("DRAFT") // CampaignStatus enum
+  target_segment  String?        // JSON
+  budget          Decimal?
+  start_date      DateTime?
+  end_date        DateTime?
+  sent_count      Int            @default(0)
+  opened_count    Int            @default(0)
+  clicked_count   Int            @default(0)
+  converted_count Int            @default(0)
+  created_by_id   String
+  created_at      DateTime       @default(now())
+  updated_at      DateTime       @updatedAt
+
+  createdBy User @relation("CampaignCreator", fields: [created_by_id], references: [id])
+}
+
+//=============================================================================
+// MODULE 3: SALES
+//=============================================================================
+
+model Quotation {
+  id                String          @id @default(cuid())
+  quote_number      String          @unique
+  customer_id       String?
+  customer_name     String
+  customer_phone    String
+  model             String
+  version           String
+  color             String
+  base_price        Decimal
+  accessories       String?         // JSON
+  services          String?         // JSON
+  insurance         Decimal?
+  registration_tax  Decimal?
+  registration_fee  Decimal?
+  other_fees        Decimal?
+  discount          Decimal         @default(0)
+  promotion_value   Decimal         @default(0)
+  total_price       Decimal
+  status            String          @default("DRAFT") // QuotationStatus enum
+  valid_until       DateTime?
+  created_by_id     String
+  created_at        DateTime        @default(now())
+  updated_at        DateTime        @updatedAt
+
+  customer  Customer?  @relation(fields: [customer_id], references: [id])
+  createdBy User       @relation("QuoteCreator", fields: [created_by_id], references: [id], onDelete: Restrict)
+  contracts Contract[]
+
+  @@index([quote_number])
+  @@index([status])
+}
+
+model TestDrive {
+  id                  String          @id @default(cuid())
+  customer_id         String
+  model               String
+  scheduled_date      DateTime
+  scheduled_time      String
+  status              String          @default("SCHEDULED") // TestDriveStatus enum
+  sales_consultant_id String
+  feedback            String?
+  created_at          DateTime        @default(now())
+  updated_at          DateTime        @updatedAt
+
+  customer        Customer @relation(fields: [customer_id], references: [id])
+  salesConsultant User     @relation("SalesConsultant", fields: [sales_consultant_id], references: [id], onDelete: Restrict)
+}
+
+model Vin {
+  id                       String    @id @default(cuid())
+  vin_number               String    @unique
+  model                    String
+  version                  String
+  color                    String
+  year                     Int
+  status                   String    @default("AVAILABLE") // VinStatus enum
+  arrival_date             DateTime?
+  allocated_to_contract_id String?   @unique
+  created_at               DateTime  @default(now())
+  updated_at               DateTime  @updatedAt
+
+  allocatedContract Contract?      @relation("VinToContract", fields: [allocated_to_contract_id], references: [id])
+  pdsChecklists     PDSChecklist[]
+
+  @@index([vin_number])
+  @@index([status])
+}
+
+model Contract {
+  id               String         @id @default(cuid())
+  contract_number  String         @unique
+  quotation_id     String
+  customer_id      String
+  vin_id           String?
+  total_amount     Decimal
+  deposit_amount   Decimal
+  remaining_amount Decimal
+  payment_method   String?        // PaymentMethod enum
+  contract_date    DateTime
+  delivery_date    DateTime?
+  status           String         @default("ACTIVE")
+  created_by_id    String
+  created_at       DateTime       @default(now())
+  updated_at       DateTime       @updatedAt
+
+  quotation     Quotation      @relation(fields: [quotation_id], references: [id])
+  customer      Customer       @relation(fields: [customer_id], references: [id])
+  vin           Vin?           @relation("VinToContract")
+  createdBy     User           @relation("ContractCreator", fields: [created_by_id], references: [id], onDelete: Restrict)
+  deposits      Deposit[]
+  pdsChecklists PDSChecklist[]
+}
+
+model Deposit {
+  id              String        @id @default(cuid())
+  receipt_number  String        @unique
+  customer_id     String?
+  customer_name   String
+  contract_id     String?
+  contract_number String?
+  amount          Decimal
+  payment_method  String        // PaymentMethod enum
+  status          String        @default("PAID") // DepositStatus enum
+  notes           String?
+  received_by_id  String
+  created_at      DateTime      @default(now())
+  updated_at      DateTime      @updatedAt
+
+  customer   Customer? @relation(fields: [customer_id], references: [id])
+  contract   Contract? @relation(fields: [contract_id], references: [id])
+  receivedBy User      @relation("DepositReceiver", fields: [received_by_id], references: [id], onDelete: Restrict)
+}
+
+model PDSChecklist {
+  id                  String    @id @default(cuid())
+  contract_id         String
+  vin_id              String
+  exterior_check      String?   // JSON
+  interior_check      String?   // JSON
+  mechanical_check    String?   // JSON
+  documentation_check String?   // JSON
+  photos              String?   // JSON array
+  inspector_id        String
+  customer_signature  String?
+  inspector_signature String?
+  delivery_date       DateTime?
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+
+  contract  Contract @relation(fields: [contract_id], references: [id])
+  vin       Vin      @relation(fields: [vin_id], references: [id])
+  inspector User     @relation("PDSInspector", fields: [inspector_id], references: [id])
+}
+
+//=============================================================================
+// MODULE 4: SERVICE
+//=============================================================================
+
+model ServiceQuote {
+  id           String   @id @default(cuid())
+  quote_number String   @unique
+  customer_id  String
+  vehicle_info String   // JSON
+  services     String   // JSON
+  parts        String   // JSON
+  total_labor  Decimal
+  total_parts  Decimal
+  sub_total    Decimal
+  vat          Decimal
+  total_amount Decimal
+  status       String   @default("DRAFT")
+  advisor_id   String
+  expiry_date  DateTime
+  notes        String?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  customer Customer @relation(fields: [customer_id], references: [id])
+  advisor  User     @relation("ServiceAdvisorQuote", fields: [advisor_id], references: [id])
+}
+
+model ServiceAppointment {
+  id             String                   @id @default(cuid())
+  customer_id    String
+  vehicle_info   String                   // JSON
+  service_type   String
+  scheduled_date DateTime
+  scheduled_time String
+  status         String                   @default("SCHEDULED") // ServiceAppointmentStatus enum
+  advisor_id     String
+  bay_number     String?
+  notes          String?
+  created_at     DateTime                 @default(now())
+  updated_at     DateTime                 @updatedAt
+
+  customer     Customer      @relation(fields: [customer_id], references: [id])
+  advisor      User          @relation("ServiceAdvisor", fields: [advisor_id], references: [id])
+  repairOrders RepairOrder[]
+}
+
+model RepairOrder {
+  id                  String            @id @default(cuid())
+  ro_number           String            @unique
+  appointment_id      String?
+  customer_id         String
+  vehicle_info        String            // JSON
+  mileage             Int?
+  fuel_level          String?
+  customer_complaints String?
+  inspection_notes    String?
+  status              String            @default("PENDING") // RepairOrderStatus enum
+  advisor_id          String
+  technician_id       String?
+  bay_number          String?
+  estimated_completion DateTime?
+  actual_completion    DateTime?
+  created_at          DateTime          @default(now())
+  updated_at          DateTime          @updatedAt
+
+  appointment   ServiceAppointment? @relation(fields: [appointment_id], references: [id])
+  customer      Customer            @relation(fields: [customer_id], references: [id])
+  advisor       User                @relation("ROAdvisor", fields: [advisor_id], references: [id])
+  technician    User?               @relation("ROTechnician", fields: [technician_id], references: [id])
+  lineItems     ROLineItem[]
+  workLogs      WorkLog[]
+  qcChecklists  QCChecklist[]
+  bayAssignments BayAssignment[]
+
+  @@index([ro_number])
+  @@index([status])
+}
+
+model ServiceBay {
+  id                  String   @id @default(cuid())
+  bay_code            String   @unique
+  bay_name            String
+  bay_type            String   // ENUM: STANDARD, PREMIUM, EXPRESS
+  capacity_vehicles    Int      @default(1)
+  location            String
+  description         String?
+  status              String   @default("ACTIVE") // ENUM: ACTIVE, INACTIVE
+  deleted_at          DateTime?
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  @@map("service_bays")
+}
+
+model BayAssignment {
+  id                String    @id @default(cuid())
+  bay_id            String
+  repair_order_id   String
+  assigned_at       DateTime  @default(now())
+  started_at        DateTime?
+  estimated_end     DateTime?
+  actual_end        DateTime?
+  status            String    @default("ASSIGNED")
+  progress_percent  Int       @default(0)
+  delay_minutes     Int       @default(0)
+  notes             String?
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  repairOrder   RepairOrder  @relation(fields: [repair_order_id], references: [id])
+  statusLogs    BayStatusLog[]
+
+  @@map("bay_assignments")
+}
+
+model BayStatusLog {
+  id             String    @id @default(cuid())
+  bay_id         String
+  assignment_id  String?
+  status         String
+  changed_at     DateTime  @default(now())
+  changed_by     String?
+  notes          String?
+
+  assignment BayAssignment? @relation(fields: [assignment_id], references: [id])
+  changedBy  User?          @relation("BayStatusChanger", fields: [changed_by], references: [id])
+
+  @@map("bay_status_logs")
+}
+
+model ROLineItem {
+  id          String   @id @default(cuid())
+  ro_id       String
+  item_type   String
+  item_code   String
+  item_name   String
+  quantity    Decimal
+  unit_price  Decimal
+  total_price Decimal
+  created_at  DateTime @default(now())
+
+  repairOrder RepairOrder @relation(fields: [ro_id], references: [id])
+}
+
+model WorkLog {
+  id               String   @id @default(cuid())
+  ro_id            String
+  technician_id    String
+  work_description String
+  hours_spent      Decimal?
+  status           String
+  photos           String?  // JSON
+  notes            String?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  repairOrder RepairOrder @relation(fields: [ro_id], references: [id])
+  technician  User        @relation(fields: [technician_id], references: [id])
+}
+
+model QCChecklist {
+  id              String   @id @default(cuid())
+  ro_id           String
+  checklist_items String   // JSON
+  photos          String?  // JSON
+  qc_result       String
+  qc_by_id        String
+  rework_notes    String?
+  created_at      DateTime @default(now())
+
+  repairOrder RepairOrder @relation(fields: [ro_id], references: [id])
+  qcBy        User        @relation(fields: [qc_by_id], references: [id])
+}
+
+//=============================================================================
+// MODULE 5: PARTS
+//=============================================================================
+
+model Part {
+  id          String   @id @default(cuid())
+  part_number String   @unique
+  name        String
+  description String?
+  category    String
+  quantity    Int      @default(0)
+  min_stock   Int      @default(10)
+  max_stock   Int      @default(100)
+  unit_price  Decimal
+  cost_price  Decimal
+  supplier_id String?
+  location    String?
+  status      String   @default("ACTIVE")
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  supplier        Supplier?       @relation(fields: [supplier_id], references: [id])
+  stockMovements  StockMovement[]
+  poLineItems     POLineItem[]
+  stockTakeItems  StockTakeItem[]
+
+  @@index([part_number])
+  @@index([category])
+}
+
+model Supplier {
+  id             String   @id @default(cuid())
+  code           String   @unique
+  name           String
+  contact_person String?
+  phone          String?
+  email          String?
+  address        String?
+  payment_terms  String?
+  status         String   @default("ACTIVE")
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  parts          Part[]
+  purchaseOrders PurchaseOrder[]
+}
+
+model StockMovement {
+  id             String            @id @default(cuid())
+  part_id        String
+  type           String            // StockMovementType enum
+  quantity       Int
+  reference_type String?
+  reference_id   String?
+  notes          String?
+  user_id        String
+  created_at     DateTime          @default(now())
+
+  part Part @relation(fields: [part_id], references: [id])
+  user User @relation(fields: [user_id], references: [id])
+
+  @@index([part_id])
+  @@index([created_at])
+}
+
+model PurchaseOrder {
+  id                     String              @id @default(cuid())
+  po_number              String              @unique
+  supplier_id            String
+  status                 String              @default("DRAFT") // PurchaseOrderStatus enum
+  order_date             DateTime
+  expected_delivery_date DateTime?
+  actual_delivery_date   DateTime?
+  total_amount           Decimal
+  notes                  String?
+  created_by_id          String
+  created_at             DateTime            @default(now())
+  updated_at             DateTime            @updatedAt
+
+  supplier  Supplier     @relation(fields: [supplier_id], references: [id])
+  createdBy User         @relation("POCreator", fields: [created_by_id], references: [id])
+  lineItems POLineItem[]
+}
+
+model POLineItem {
+  id                String   @id @default(cuid())
+  po_id             String
+  part_id           String
+  quantity          Int
+  unit_price        Decimal
+  total_price       Decimal
+  received_quantity Int      @default(0)
+  created_at        DateTime @default(now())
+
+  purchaseOrder PurchaseOrder @relation(fields: [po_id], references: [id])
+  part          Part          @relation(fields: [part_id], references: [id])
+}
+
+model StockTake {
+  id             String    @id @default(cuid())
+  session_number String    @unique
+  session_date   DateTime
+  status         String    @default("IN_PROGRESS")
+  counted_by_id  String
+  approved_by_id String?
+  notes          String?
+  created_at     DateTime  @default(now())
+  completed_at   DateTime?
+
+  countedBy  User            @relation("StockTakeCounter", fields: [counted_by_id], references: [id])
+  approvedBy User?           @relation("StockTakeApprover", fields: [approved_by_id], references: [id])
+  items      StockTakeItem[]
+}
+
+model StockTakeItem {
+  id              String   @id @default(cuid())
+  stock_take_id   String
+  part_id         String
+  system_quantity Int
+  actual_quantity Int
+  variance        Int
+  notes           String?
+  created_at      DateTime @default(now())
+
+  stockTake StockTake @relation(fields: [stock_take_id], references: [id])
+  part      Part      @relation(fields: [part_id], references: [id])
+}
+
+//=============================================================================
+// MODULE 6: INSURANCE
+//=============================================================================
+
+model InsuranceContract {
+  id                String                  @id @default(cuid())
+  contract_number   String                  @unique
+  customer_id       String
+  vehicle_id        String?
+  insurance_type    String
+  insurance_company String
+  policy_number     String
+  premium_amount    Decimal
+  coverage_amount   Decimal
+  start_date        DateTime
+  end_date          DateTime
+  status            String                  @default("ACTIVE") // InsuranceContractStatus enum
+  notes             String?
+  created_by_id     String
+  created_at        DateTime                @default(now())
+  updated_at        DateTime                @updatedAt
+
+  customer Customer         @relation(fields: [customer_id], references: [id])
+  createdBy User             @relation("InsuranceCreator", fields: [created_by_id], references: [id])
+  claims   InsuranceClaim[]
+}
+
+model InsuranceClaim {
+  id                   String               @id @default(cuid())
+  claim_number         String               @unique
+  contract_id          String
+  incident_date        DateTime
+  incident_type        String
+  incident_description String
+  claim_amount         Decimal
+  approved_amount      Decimal?
+  status               String               @default("SUBMITTED") // InsuranceClaimStatus enum
+  documents            String?              // JSON array
+  notes                String?
+  reviewed_by_id       String?
+  reviewed_at          DateTime?
+  paid_at              DateTime?
+  created_at           DateTime             @default(now())
+  updated_at           DateTime             @updatedAt
+
+  contract   InsuranceContract @relation(fields: [contract_id], references: [id])
+  reviewedBy User?             @relation("ClaimReviewer", fields: [reviewed_by_id], references: [id])
+}
+
+//=============================================================================
+// MODULE 7: ACCOUNTING
+//=============================================================================
+
+model Invoice {
+  id             String   @id @default(cuid())
+  invoice_number String   @unique
+  customer_id    String
+  invoice_type   String
+  reference_id   String?
+  invoice_date   DateTime
+  due_date       DateTime
+  sub_total      Decimal
+  vat            Decimal
+  total_amount   Decimal
+  paid_amount    Decimal  @default(0)
+  status         String   @default("UNPAID")
+  notes          String?
+  created_by_id  String
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  customer  Customer  @relation(fields: [customer_id], references: [id])
+  createdBy User      @relation("InvoiceCreator", fields: [created_by_id], references: [id])
+  payments  Payment[]
+
+  @@index([invoice_number])
+  @@index([status])
+}
+
+model Payment {
+  id               String        @id @default(cuid())
+  payment_number   String        @unique
+  invoice_id       String
+  payment_date     DateTime
+  amount           Decimal
+  payment_method   String        // PaymentMethod enum
+  reference_number String?
+  notes            String?
+  received_by_id   String
+  created_at       DateTime      @default(now())
+
+  invoice    Invoice @relation(fields: [invoice_id], references: [id])
+  receivedBy User    @relation("PaymentReceiver", fields: [received_by_id], references: [id])
+}
+
+model Transaction {
+  id               String          @id @default(cuid())
+  transaction_date DateTime
+  type             String          // TransactionType enum
+  account_code     String
+  description      String
+  debit            Decimal         @default(0)
+  credit           Decimal         @default(0)
+  reference_type   String?
+  reference_id     String?
+  created_by_id    String
+  created_at       DateTime        @default(now())
+
+  createdBy User @relation("TransactionCreator", fields: [created_by_id], references: [id])
+}
+
+model FixedAsset {
+  id                        String                 @id @default(cuid())
+  asset_code                String                 @unique
+  asset_name                String
+  category                  String
+  acquisition_date          DateTime
+  acquisition_cost          Decimal
+  useful_life_years         Int
+  depreciation_method       String
+  accumulated_depreciation  Decimal                @default(0)
+  net_book_value            Decimal
+  location                  String?
+  status                    String                 @default("ACTIVE")
+  created_at                DateTime               @default(now())
+  updated_at                DateTime               @updatedAt
+  depreciation_schedules DepreciationSchedule[]
+}
+
+model DepreciationSchedule {
+  id                       String   @id @default(cuid())
+  asset_id                 String
+  period_month             String
+  depreciation_amount      Decimal
+  accumulated_depreciation Decimal
+  net_book_value           Decimal
+  created_at               DateTime @default(now())
+
+  asset FixedAsset @relation(fields: [asset_id], references: [id])
+}
+
+model TaxDeclaration {
+  id                 String    @id @default(cuid())
+  declaration_number String    @unique
+  tax_type           String
+  period             String
+  taxable_amount     Decimal
+  tax_amount         Decimal
+  status             String    @default("DRAFT")
+  filed_date         DateTime?
+  payment_date       DateTime?
+  created_by_id      String
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+
+  createdBy User @relation("TaxCreator", fields: [created_by_id], references: [id])
+}
+
+//=============================================================================
+// SUPPORTING ENTITIES
+//=============================================================================
+
+model VehicleModel {
+  id         String   @id @default(cuid())
+  model_code String   @unique
+  model_name String   @unique
+  category   String   // ENUM: SEDAN, SUV, HATCHBACK, MPV
+  base_price Decimal
+  status     String   @default("ACTIVE") // ENUM: ACTIVE, INACTIVE
+  deleted_at DateTime?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("vehicle_models")
+}
+
+model Accessory {
+  id                    String   @id @default(cuid())
+  accessory_code        String   @unique
+  accessory_name        String
+  category              String   // ENUM: INTERIOR, EXTERIOR, TECH, SAFETY
+  price                 Decimal
+  installation_required Boolean  @default(false)
+  warranty_period_months Int      @default(12)
+  status                String   @default("ACTIVE") // ENUM: ACTIVE, INACTIVE
+  deleted_at            DateTime?
+  created_at            DateTime @default(now())
+  updated_at            DateTime @updatedAt
+
+  @@map("accessories")
+}
+
+model ServiceCatalog {
+  id              String   @id @default(cuid())
+  service_code    String   @unique
+  service_name    String
+  category        String   // ENUM: MAINTENANCE, REPAIR, INSPECTION, DETAILING
+  duration_hours  Decimal  @default(1.0)
+  base_price      Decimal
+  requires_parts  Boolean  @default(false)
+  status          String   @default("ACTIVE") // ENUM: ACTIVE, INACTIVE
+  deleted_at      DateTime?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  @@map("service_catalogs")
+}

@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
       where.category = category
     }
 
-    const rules = await prisma.scoringRule.findMany({
+    const rules = await prisma.scoring_rules.findMany({
       where,
       orderBy: { created_at: 'desc' }
     })
@@ -31,13 +31,14 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { name, category, condition, points } = body
 
-    const rule = await prisma.scoringRule.create({
+    const rule = await prisma.scoring_rules.create({
       data: {
-        name,
+        rule_code: `RULE-${Date.now()}`,
+        rule_name: name,
         category,
-        condition: JSON.stringify(condition),
-        points,
-        is_active: true
+        condition_expression: JSON.stringify(condition),
+        description: `Created by user`,
+        status: "ACTIVE"
       }
     })
 

@@ -1,0 +1,650 @@
+openapi: 3.0.3
+info:
+  title: Honda DMS API
+  description: |
+    Honda Dealer Management System - RESTful API Specification
+    
+    ## Overview
+    Complete API for managing Honda dealership operations including:
+    - Customer Relationship Management (CRM)
+    - Sales & Quotations
+    - Service & Repair Orders
+    - Parts Inventory
+    - Insurance & Accounting
+    
+    ## Authentication
+    All endpoints require JWT Bearer token authentication.
+    
+    ## Rate Limiting
+    - 1000 requests per hour per user
+    - 100 requests per minute per user
+    
+    ## Versioning
+    Current version: v1.0
+    
+  version: 1.0.0
+  contact:
+    name: Honda DMS API Support
+    email: api@hondadms.com
+  license:
+    name: Proprietary
+    
+servers:
+  - url: https://api.hondadms.com/v1
+    description: Production server
+  - url: https://staging-api.hondadms.com/v1
+    description: Staging server
+  - url: http://localhost:3000/api
+    description: Development server
+
+tags:
+  - name: Dashboard
+    description: Dashboard metrics and summaries
+  - name: CRM - Leads
+    description: Lead management operations
+  - name: CRM - Customers
+    description: Customer management operations
+  - name: CRM - Scoring
+    description: Lead scoring operations
+  - name: CRM - Interactions
+    description: Customer interaction tracking
+  - name: CRM - Reminders
+    description: Reminder management
+  - name: CRM - Complaints
+    description: Complaint handling
+  - name: CRM - Marketing
+    description: Marketing campaigns
+  - name: Sales - Quotations
+    description: Sales quotation management
+  - name: Sales - Test Drives
+    description: Test drive scheduling
+  - name: Sales - VIN
+    description: VIN inventory management
+  - name: Sales - Contracts
+    description: Sales contract management
+  - name: Sales - Deposits
+    description: Deposit management
+  - name: Sales - PDS
+    description: Pre-delivery service
+  - name: Service - Quotes
+    description: Service quotations
+  - name: Service - Appointments
+    description: Service appointment scheduling
+  - name: Service - Repair Orders
+    description: Repair order management
+  - name: Service - QC
+    description: Quality control
+  - name: Service - Settlement
+    description: Service payment settlement
+  - name: Parts
+    description: Parts inventory operations
+  - name: Insurance
+    description: Insurance contract and claims
+  - name: Accounting
+    description: Financial operations
+  - name: Admin
+    description: System administration
+
+security:
+  - bearerAuth: []
+
+paths:
+  # ==================== DASHBOARD ====================
+  /dashboard/summary:
+    get:
+      tags: [Dashboard]
+      summary: Get dashboard summary
+      description: Retrieve overall dashboard metrics
+      operationId: getDashboardSummary
+      responses:
+        '200':
+          description: Dashboard summary retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /dashboard/sales:
+    get:
+      tags: [Dashboard]
+      summary: Get sales metrics
+      operationId: getSalesMetrics
+      parameters:
+        - $ref: '#/components/parameters/DateFrom'
+        - $ref: '#/components/parameters/DateTo'
+      responses:
+        '200':
+          description: Sales metrics retrieved successfully
+
+  /dashboard/service:
+    get:
+      tags: [Dashboard]
+      summary: Get service metrics
+      operationId: getServiceMetrics
+      parameters:
+        - $ref: '#/components/parameters/DateFrom'
+        - $ref: '#/components/parameters/DateTo'
+      responses:
+        '200':
+          description: Service metrics retrieved successfully
+
+  /dashboard/inventory:
+    get:
+      tags: [Dashboard]
+      summary: Get inventory metrics
+      operationId: getInventoryMetrics
+      responses:
+        '200':
+          description: Inventory metrics retrieved successfully
+
+  /dashboard/activities:
+    get:
+      tags: [Dashboard]
+      summary: Get recent activities
+      operationId: getRecentActivities
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Recent activities retrieved successfully
+
+  # ==================== CRM - LEADS ====================
+  /crm/leads:
+    get:
+      tags: [CRM - Leads]
+      summary: List leads
+      operationId: listLeads
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [NEW, CONTACTED, QUALIFIED, PROPOSAL, NEGOTIATION, WON, DEAD]
+        - name: source
+          in: query
+          schema:
+            type: string
+        - name: assigned_to_id
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Leads retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Lead'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+    
+    post:
+      tags: [CRM - Leads]
+      summary: Create lead
+      operationId: createLead
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLeadRequest'
+      responses:
+        '201':
+          description: Lead created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /crm/leads/{id}:
+    get:
+      tags: [CRM - Leads]
+      summary: Get lead detail
+      operationId: getLeadDetail
+      parameters:
+        - $ref: '#/components/parameters/LeadId'
+      responses:
+        '200':
+          description: Lead retrieved successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+    
+    put:
+      tags: [CRM - Leads]
+      summary: Update lead
+      operationId: updateLead
+      parameters:
+        - $ref: '#/components/parameters/LeadId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLeadRequest'
+      responses:
+        '200':
+          description: Lead updated successfully
+    
+    delete:
+      tags: [CRM - Leads]
+      summary: Delete lead (soft delete)
+      operationId: deleteLead
+      parameters:
+        - $ref: '#/components/parameters/LeadId'
+      responses:
+        '200':
+          description: Lead deleted successfully
+
+  /crm/leads/{id}/assign:
+    post:
+      tags: [CRM - Leads]
+      summary: Assign lead to user
+      operationId: assignLead
+      parameters:
+        - $ref: '#/components/parameters/LeadId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [assigned_to_id]
+              properties:
+                assigned_to_id:
+                  type: string
+      responses:
+        '200':
+          description: Lead assigned successfully
+
+  /crm/leads/{id}/convert:
+    post:
+      tags: [CRM - Leads]
+      summary: Convert lead to customer
+      operationId: convertLead
+      parameters:
+        - $ref: '#/components/parameters/LeadId'
+      responses:
+        '200':
+          description: Lead converted successfully
+
+  # ==================== CRM - CUSTOMERS ====================
+  /crm/customers:
+    get:
+      tags: [CRM - Customers]
+      summary: List customers
+      operationId: listCustomers
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [INDIVIDUAL, COMPANY]
+        - name: tier
+          in: query
+          schema:
+            type: string
+            enum: [BRONZE, SILVER, GOLD, PLATINUM]
+      responses:
+        '200':
+          description: Customers retrieved successfully
+    
+    post:
+      tags: [CRM - Customers]
+      summary: Create customer
+      operationId: createCustomer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCustomerRequest'
+      responses:
+        '201':
+          description: Customer created successfully
+
+  /crm/customers/{id}:
+    get:
+      tags: [CRM - Customers]
+      summary: Get customer detail
+      operationId: getCustomerDetail
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+      responses:
+        '200':
+          description: Customer retrieved successfully
+
+  # ==================== SALES - QUOTATIONS ====================
+  /sales/quotations:
+    get:
+      tags: [Sales - Quotations]
+      summary: List quotations
+      operationId: listQuotations
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Quotations retrieved successfully
+    
+    post:
+      tags: [Sales - Quotations]
+      summary: Create quotation
+      operationId: createQuotation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateQuotationRequest'
+      responses:
+        '201':
+          description: Quotation created successfully
+
+  # ==================== SERVICE - REPAIR ORDERS ====================
+  /service/orders:
+    get:
+      tags: [Service - Repair Orders]
+      summary: List repair orders
+      operationId: listRepairOrders
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Repair orders retrieved successfully
+    
+    post:
+      tags: [Service - Repair Orders]
+      summary: Create repair order
+      operationId: createRepairOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRepairOrderRequest'
+      responses:
+        '201':
+          description: Repair order created successfully
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    
+    DateFrom:
+      name: date_from
+      in: query
+      schema:
+        type: string
+        format: date
+    
+    DateTo:
+      name: date_to
+      in: query
+      schema:
+        type: string
+        format: date
+    
+    LeadId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+    
+    CustomerId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+
+  schemas:
+    ApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+        message:
+          type: string
+    
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: "CRM_404"
+            message:
+              type: string
+              example: "Lead not found"
+            details:
+              type: object
+    
+    PaginationMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+    
+    DashboardSummary:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            leads:
+              type: object
+              properties:
+                total:
+                  type: integer
+                new:
+                  type: integer
+                qualified:
+                  type: integer
+            customers:
+              type: object
+              properties:
+                total:
+                  type: integer
+                active:
+                  type: integer
+            sales:
+              type: object
+              properties:
+                revenue:
+                  type: number
+                units_sold:
+                  type: integer
+    
+    Lead:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        status:
+          type: string
+          enum: [NEW, CONTACTED, QUALIFIED, PROPOSAL, NEGOTIATION, WON, DEAD]
+        score:
+          type: integer
+          minimum: 1
+          maximum: 100
+        source:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    
+    CreateLeadRequest:
+      type: object
+      required: [name, phone, source]
+      properties:
+        name:
+          type: string
+          minLength: 2
+        phone:
+          type: string
+          pattern: '^[0-9]{10,11}$'
+        email:
+          type: string
+          format: email
+        source:
+          type: string
+        model_interest:
+          type: string
+        budget:
+          type: number
+        assigned_to_id:
+          type: string
+    
+    UpdateLeadRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        status:
+          type: string
+        score:
+          type: integer
+    
+    CreateCustomerRequest:
+      type: object
+      required: [name, type, phone]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [INDIVIDUAL, COMPANY]
+        phone:
+          type: string
+        email:
+          type: string
+        address:
+          type: string
+        vat:
+          type: string
+    
+    CreateQuotationRequest:
+      type: object
+      required: [customer_name, customer_phone, model, version, color, base_price, total_price]
+      properties:
+        customer_id:
+          type: string
+        customer_name:
+          type: string
+        customer_phone:
+          type: string
+        model:
+          type: string
+        version:
+          type: string
+        color:
+          type: string
+        base_price:
+          type: number
+        accessories:
+          type: array
+          items:
+            type: string
+        total_price:
+          type: number
+    
+    CreateRepairOrderRequest:
+      type: object
+      required: [customer_id, vehicle_info, advisor_id]
+      properties:
+        customer_id:
+          type: string
+        vehicle_info:
+          type: object
+          properties:
+            vin:
+              type: string
+            license_plate:
+              type: string
+            model:
+              type: string
+            mileage:
+              type: integer
+        advisor_id:
+          type: string
+
+  responses:
+    Unauthorized:
+      description: Unauthorized - Invalid or missing authentication token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    
+    BadRequest:
+      description: Bad request - Invalid input
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'

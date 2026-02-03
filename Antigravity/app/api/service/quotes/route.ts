@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const quotes = await prisma.serviceQuote.findMany({
       where,
       include: {
-        customer: {
+        Customer: {
           select: {
             id: true,
             name: true,
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
             email: true
           }
         },
-        advisor: {
+        User: {
           select: {
             id: true,
             name: true,
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
         status: 'DRAFT'
       },
       include: {
-        customer: {
+        Customer: {
           select: {
             id: true,
             name: true,
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
             email: true
           }
         },
-        advisor: {
+        User: {
           select: {
             id: true,
             name: true,

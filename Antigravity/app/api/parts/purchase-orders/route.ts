@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const purchaseOrders = await prisma.purchaseOrder.findMany({
       where,
       include: {
-        supplier: {
+        Supplier: {
           select: {
             id: true,
             name: true,
@@ -26,9 +26,9 @@ export async function GET(request: NextRequest) {
             phone: true
           }
         },
-        lineItems: {
+        POLineItem: {
           include: {
-            part: {
+            Part: {
               select: {
                 id: true,
                 part_number: true,
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
             }
           }
         },
-        createdBy: {
+        User: {
           select: {
             id: true,
             name: true,
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
         created_by_id: '1'
       },
       include: {
-        supplier: {
+        Supplier: {
           select: {
             id: true,
             name: true,
@@ -94,9 +94,9 @@ export async function POST(request: NextRequest) {
             phone: true
           }
         },
-        lineItems: {
+        POLineItem: {
           include: {
-            part: {
+            Part: {
               select: {
                 id: true,
                 part_number: true,
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
             }
           }
         },
-        createdBy: {
+        User: {
           select: {
             id: true,
             name: true,

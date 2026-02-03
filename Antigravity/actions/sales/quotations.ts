@@ -24,6 +24,16 @@ export interface CreateQuotationInput {
     promotion_value?: number
     total_price: number
     notes?: string
+    // CR-20260202-004: Payment Info
+    payment_method?: string
+    bank_id?: string
+    prepayment_ratio?: number
+    loan_term?: number
+    interest_rate?: number
+    // CR-20260202-004: Promotions & Notes
+    promotions?: any[]
+    customer_notes?: string
+    internal_notes?: string
     status?: 'DRAFT' | 'SENT' | 'APPROVED' | 'CONTRACT' | 'LOST' | 'EXPIRED' | 'DELETED'
     user_id: string
 }
@@ -36,11 +46,11 @@ export async function createQuotation(data: CreateQuotationInput) {
         // ENUM Validation
         const { EnumValidator } = await import('@/middleware/enum_validation');
         const enumValidation = EnumValidator.validateObject('quotations', data);
-        
+
         if (!enumValidation.valid) {
-            return { 
-                success: false, 
-                error: "Lỗi xác thực: " + enumValidation.errors.join("; ") 
+            return {
+                success: false,
+                error: "Lỗi xác thực: " + enumValidation.errors.join("; ")
             };
         }
 
@@ -67,12 +77,22 @@ export async function createQuotation(data: CreateQuotationInput) {
                 discount: data.discount || 0,
                 promotion_value: data.promotion_value || 0,
                 total_price: data.total_price,
+                // CR-20260202-004: Payment Info
+                payment_method: data.payment_method || 'CASH',
+                bank_id: data.bank_id,
+                prepayment_ratio: data.prepayment_ratio,
+                loan_term: data.loan_term,
+                interest_rate: data.interest_rate,
+                // CR-20260202-004: Promotions & Notes
+                promotions: data.promotions ? JSON.stringify(data.promotions) : null,
+                customer_notes: data.customer_notes,
+                internal_notes: data.internal_notes,
                 created_by_id: data.user_id,
                 status: data.status || 'DRAFT'
             },
             include: {
-                customer: true,
-                createdBy: true
+                Customer: true,
+                User: true
             }
         })
 
@@ -91,8 +111,8 @@ export async function getQuotations() {
     try {
         const quotations = await prisma.quotation.findMany({
             include: {
-                customer: true,
-                createdBy: {
+                Customer: true,
+                User: {
                     select: {
                         id: true,
                         name: true,
@@ -103,7 +123,7 @@ export async function getQuotations() {
             orderBy: { created_at: 'desc' }
         })
 
-return quotations.map((q: any) => ({
+        return quotations.map((q: any) => ({
             ...q,
             created_at: q.created_at.toISOString(),
             updated_at: q.updated_at.toISOString(),
@@ -123,8 +143,8 @@ export async function getQuotation(id: string) {
         const quotation = await prisma.quotation.findUnique({
             where: { id },
             include: {
-                customer: true,
-                createdBy: {
+                Customer: true,
+                User: {
                     select: {
                         id: true,
                         name: true,
@@ -136,7 +156,7 @@ export async function getQuotation(id: string) {
 
         if (!quotation) return null
 
-return {
+        return {
             ...quotation,
             created_at: quotation.created_at.toISOString(),
             updated_at: quotation.updated_at.toISOString(),
@@ -171,7 +191,7 @@ export async function updateQuotationStatus(id: string, status: 'DRAFT' | 'SENT'
  */
 export async function updateQuotation(id: string, data: Partial<CreateQuotationInput>) {
     try {
-const quotation = await prisma.quotation.update({
+        const quotation = await prisma.quotation.update({
             where: { id },
             data: {
                 customer_name: data.customer_name,
@@ -188,7 +208,17 @@ const quotation = await prisma.quotation.update({
                 other_fees: data.other_fees,
                 discount: data.discount,
                 promotion_value: data.promotion_value,
-                total_price: data.total_price
+                total_price: data.total_price,
+                // CR-20260202-004: Payment Info
+                payment_method: data.payment_method,
+                bank_id: data.bank_id,
+                prepayment_ratio: data.prepayment_ratio,
+                loan_term: data.loan_term,
+                interest_rate: data.interest_rate,
+                // CR-20260202-004: Promotions & Notes
+                promotions: data.promotions ? JSON.stringify(data.promotions) : undefined,
+                customer_notes: data.customer_notes,
+                internal_notes: data.internal_notes
             }
         })
 
@@ -221,11 +251,11 @@ export async function deleteQuotation(id: string) {
         // FK Validation: Check for restricted relationships (especially contracts)
         const { FKValidator } = await import('@/middleware/fk_validation');
         const fkValidation = await FKValidator.validateBeforeDelete('quotations', id);
-        
+
         if (!fkValidation.valid) {
-            return { 
-                success: false, 
-                error: fkValidation.error || "Không thể xóa báo giá vì có bản ghi liên quan đang tồn tại." 
+            return {
+                success: false,
+                error: fkValidation.error || "Không thể xóa báo giá vì có bản ghi liên quan đang tồn tại."
             };
         }
 

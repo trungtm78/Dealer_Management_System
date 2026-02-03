@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
       where.status = status
     }
 
-    const services = await prisma.serviceCatalog.findMany({
+    const services = await prisma.service_catalogs.findMany({
       where,
       orderBy: { created_at: 'desc' }
     })
@@ -44,16 +44,16 @@ export async function POST(request: NextRequest) {
     } = body
 
     // Generate service code
-    const count = await prisma.serviceCatalog.count()
+    const count = await prisma.service_catalogs.count()
     const serviceCode = `SVC/2026/${String(count + 1).padStart(3, '0')}`
 
-    const service = await prisma.serviceCatalog.create({
+    const service = await prisma.service_catalogs.create({
       data: {
         service_code: serviceCode,
         service_name: name,
         category,
-        labor_hours: parseFloat(duration_hours),
-        labor_rate: parseFloat(base_price),
+        duration_hours: parseFloat(duration_hours),
+        base_price: parseFloat(base_price),
         status
       }
     })

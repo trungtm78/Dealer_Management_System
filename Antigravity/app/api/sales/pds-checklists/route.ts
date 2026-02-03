@@ -14,14 +14,14 @@ export async function GET(request: NextRequest) {
     const pdsChecklists = await prisma.pDSChecklist.findMany({
       where,
       include: {
-        contract: {
+        Contract: {
           select: {
             id: true,
             contract_number: true,
             customer_id: true
           }
         },
-        vin: {
+        Vin: {
           select: {
             id: true,
             vin_number: true,
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
             color: true
           }
         },
-        inspector: {
+        User: {
           select: {
             id: true,
             name: true,
@@ -71,14 +71,14 @@ export async function POST(request: NextRequest) {
         delivery_date: delivery_date ? new Date(delivery_date) : null
       },
       include: {
-        contract: {
+        Contract: {
           select: {
             id: true,
             contract_number: true,
             customer_id: true
           }
         },
-        vin: {
+        Vin: {
           select: {
             id: true,
             vin_number: true,
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
             color: true
           }
         },
-        inspector: {
+        User: {
           select: {
             id: true,
             name: true,

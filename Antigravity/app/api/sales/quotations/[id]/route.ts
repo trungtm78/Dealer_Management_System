@@ -9,7 +9,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         const quotation = await prisma.quotation.findUnique({
             where: { id: params.id },
             include: {
-                createdBy: { select: { id: true, name: true } }
+                User: { select: { id: true, name: true } }
             }
         });
 
@@ -47,9 +47,9 @@ const accessoriesTotal = quotation.accessories ?
             validUntil: quotation.valid_until?.toISOString() || null,
             createdAt: quotation.created_at.toISOString(),
             updatedAt: quotation.updated_at.toISOString(),
-            createdBy: quotation.createdBy ? {
-                id: quotation.createdBy.id,
-                name: quotation.createdBy.name
+            createdBy: quotation.User ? {
+                id: quotation.User.id,
+                name: quotation.User.name
             } : undefined
         };
 
@@ -81,7 +81,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
             where: { id: params.id },
             data: updateData,
             include: {
-                createdBy: { select: { id: true, name: true } }
+                User: { select: { id: true, name: true } }
             }
         });
 
@@ -115,9 +115,9 @@ const accessoriesTotal = updatedQuotation.accessories ?
             validUntil: updatedQuotation.valid_until?.toISOString() || null,
             createdAt: updatedQuotation.created_at.toISOString(),
             updatedAt: updatedQuotation.updated_at.toISOString(),
-            createdBy: updatedQuotation.createdBy ? {
-                id: updatedQuotation.createdBy.id,
-                name: updatedQuotation.createdBy.name
+            createdBy: updatedQuotation.User ? {
+                id: updatedQuotation.User.id,
+                name: updatedQuotation.User.name
             } : undefined
         };
 

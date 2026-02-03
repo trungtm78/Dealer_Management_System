@@ -7,12 +7,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         const { repair_order_id, estimated_duration_minutes, notes, user_id } = body;
 
         // 1. Check if bay is available
-        const bay = await prisma.serviceBay.findUnique({ where: { id: params.id } });
+        const bay = await prisma.service_bays.findUnique({ where: { id: params.id } });
         if (!bay) return NextResponse.json({ success: false, error: { code: "BAY_NOT_FOUND", message: "Bay not found" } }, { status: 404 });
-        if (!bay.is_available) return NextResponse.json({ success: false, error: { code: "BAY_NOT_AVAILABLE", message: "Bay is not available" } }, { status: 400 });
+        if (bay.status !== 'ACTIVE') return NextResponse.json({ success: false, error: { code: "BAY_NOT_AVAILABLE", message: "Bay is not available" } }, { status: 400 });
 
         // 2. Check if repair order is already assigned
-        const existingAssignment = await prisma.bayAssignment.findFirst({
+        const existingAssignment = await prisma.bay_assignments.findFirst({
             where: { repair_order_id, status: { in: ['ASSIGNED', 'WORKING'] } }
         });
         if (existingAssignment) {
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         estimatedEnd.setMinutes(estimatedEnd.getMinutes() + Number(estimated_duration_minutes));
 
         const result = await prisma.$transaction(async (tx) => {
-            const assignment = await tx.bayAssignment.create({
+            const assignment = await tx.bay_assignments.create({
                 data: {
                     bay_id: params.id,
                     repair_order_id,
@@ -38,12 +38,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
                 }
             });
 
-            await tx.serviceBay.update({
+            await tx.service_bays.update({
                 where: { id: params.id },
-                data: { is_available: false }
+                data: { status: 'OCCUPIED' }
             });
 
-            await tx.bayStatusLog.create({
+            await tx.bay_status_logs.create({
                 data: {
                     bay_id: params.id,
                     assignment_id: assignment.id,
