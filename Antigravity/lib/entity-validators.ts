@@ -68,6 +68,38 @@ export const EntityValidators = {
   },
 
   /**
+   * Vehicle Engines Validation
+   * BUG-030: Engine required fields, valid values
+   */
+  vehicleEngines: (data: any) => {
+    if (!data.engine_name || !data.engine_name.trim()) {
+      throw new ValidationError('Tên động cơ là bắt buộc');
+    }
+    if (!data.engine_code || !data.engine_code.trim()) {
+      throw new ValidationError('Mã động cơ là bắt buộc');
+    }
+    if (data.fuel_type && !['PETROL', 'DIESEL', 'ELECTRIC', 'HYBRID'].includes(data.fuel_type)) {
+      throw new ValidationError('Loại nhiên liệu không hợp lệ. Các giá trị hợp lệ: PETROL, DIESEL, ELECTRIC, HYBRID');
+    }
+    if (data.engine_capacity && data.engine_capacity <= 0) {
+      throw new ValidationError('Công suất động cơ phải lớn hơn 0');
+    }
+  },
+
+  /**
+   * Vehicle Colors Validation
+   * BUG-031: Color required fields
+   */
+  vehicleColors: (data: any) => {
+    if (!data.color_name || !data.color_name.trim()) {
+      throw new ValidationError('Tên màu là bắt buộc');
+    }
+    if (!data.color_code || !data.color_code.trim()) {
+      throw new ValidationError('Mã màu là bắt buộc');
+    }
+  },
+
+  /**
    * Promotions Validation
    * BUG-024: Promotion date validation, valid discount rates
    */
@@ -116,17 +148,20 @@ export const EntityValidators = {
    * BUG-026: Warehouse required fields, valid capacity
    */
   warehouses: (data: any) => {
-    if (!data.name || !data.name.trim()) {
+    if (!data.warehouse_name || !data.warehouse_name.trim()) {
       throw new ValidationError('Tên kho là bắt buộc');
     }
-    if (!data.location || !data.location.trim()) {
+    if (!data.location_address || !data.location_address.trim()) {
       throw new ValidationError('Địa chỉ kho là bắt buộc');
-    }
-    if (data.capacity && data.capacity <= 0) {
-      throw new ValidationError('Sức chứa kho phải lớn hơn 0');
     }
     if (data.contact_person && !data.contact_person.trim()) {
       throw new ValidationError('Người liên hệ kho là bắt buộc');
+    }
+    if (data.contact_phone && !/^\d{10}$/.test(data.contact_phone)) {
+      throw new ValidationError('Số điện thoại liên hệ phải có 10 chữ số');
+    }
+    if (data.contact_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.contact_email)) {
+      throw new ValidationError('Email liên hệ không đúng định dạng');
     }
   },
 
