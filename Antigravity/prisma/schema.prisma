@@ -357,9 +357,24 @@ model Part {
   Supplier      Supplier?       @relation(fields: [supplier_id], references: [id])
   StockMovement StockMovement[]
   StockTakeItem StockTakeItem[]
+  PartVehicleCompatibility PartVehicleCompatibility[]
 
   @@index([category])
   @@index([part_number])
+}
+
+model PartVehicleCompatibility {
+  id               String   @id @default(cuid())
+  part_id          String
+  vehicle_model_id String
+  created_at       DateTime @default(now())
+  
+  Part          Part           @relation(fields: [part_id], references: [id], onDelete: Cascade)
+  VehicleModel  vehicle_models @relation(fields: [vehicle_model_id], references: [id], onDelete: Cascade)
+  
+  @@unique([part_id, vehicle_model_id])
+  @@index([part_id])
+  @@index([vehicle_model_id])
 }
 
 model Payment {
@@ -964,6 +979,7 @@ model vehicle_models {
   deleted_at DateTime?
   created_at DateTime  @default(now())
   updated_at DateTime @default(now())
+  PartVehicleCompatibility PartVehicleCompatibility[]
 }
 
 model warehouses {

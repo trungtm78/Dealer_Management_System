@@ -76,8 +76,8 @@ export function Sidebar({ className }: SidebarProps) {
                     <div className="flex items-center gap-2 mt-4 px-1">
                         <div className="w-1 h-8 bg-white/40 rounded-full"></div>
                         <div>
-                            <p className="text-[10px] text-white/60 font-semibold uppercase tracking-wider mb-0.5">Dealer Management</p>
-                            <p className="text-xs text-white font-bold">Hệ Thống Quản Lý</p>
+                            <p className="text-[10px] text-white/60 font-semibold uppercase tracking-wider mb-0.5">Dealer Management System</p>
+                            <p className="text-xs text-white font-bold">Hệ thống quản lý chuỗi đại lý</p>
                         </div>
                     </div>
                 )}

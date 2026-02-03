@@ -473,6 +473,12 @@ export const menuGroups: MenuGroup[] = [
                         href: "/master-data/uoms"
                     },
                     {
+                        id: "parts-management",
+                        label: "Phụ Tùng",
+                        icon: Package,
+                        href: "/master-data/parts"
+                    },
+                    {
                         id: "part-categories",
                         label: "Danh Mục Phụ Tùng",
                         icon: FolderTree,
