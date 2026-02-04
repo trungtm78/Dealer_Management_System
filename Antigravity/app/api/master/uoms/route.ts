@@ -4,6 +4,22 @@ import prisma from '@/lib/prisma'
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
+    const forDropdown = searchParams.get('for_dropdown') === 'true';
+    const status = searchParams.get('status') || 'ACTIVE';
+
+    if (forDropdown) {
+      const uoms = await prisma.uoms.findMany({
+        where: { status },
+        select: { id: true, uom_name: true, status: true },
+        orderBy: { uom_name: 'asc' }
+      });
+      const dropdownData = uoms.map(u => ({
+        id: u.id,
+        name: u.uom_name,
+        status: u.status
+      }));
+      return NextResponse.json({ data: dropdownData });
+    }
     
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')

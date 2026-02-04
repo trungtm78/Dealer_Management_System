@@ -4,21 +4,37 @@ import prisma from "@/lib/prisma";
 export async function GET(req: NextRequest) {
     try {
         const { searchParams } = new URL(req.url);
-        
+        const forDropdown = searchParams.get('for_dropdown') === 'true';
+        const status = searchParams.get('status') || 'ACTIVE';
+
+        if (forDropdown) {
+            const catalogs = await prisma.service_catalogs.findMany({
+                where: { status },
+                select: { id: true, service_name: true, status: true },
+                orderBy: { service_name: 'asc' }
+            });
+            const dropdownData = catalogs.map(c => ({
+                id: c.id,
+                name: c.service_name,
+                status: c.status
+            }));
+            return NextResponse.json({ data: dropdownData });
+        }
+
         const page = parseInt(searchParams.get('page') || '1');
         const limit = parseInt(searchParams.get('limit') || '10');
         const skip = (page - 1) * limit;
         const search = searchParams.get('search') || '';
-        
+
         const where: any = {};
-        
+
         if (search) {
             where.OR = [
                 { service_name: { contains: search } },
                 { service_code: { contains: search } }
             ];
         }
-        
+
         const [total, catalogs] = await Promise.all([
             prisma.service_catalogs.count({ where }),
             prisma.service_catalogs.findMany({
@@ -28,7 +44,7 @@ export async function GET(req: NextRequest) {
                 orderBy: { created_at: 'desc' }
             })
         ]);
-        
+
         return NextResponse.json({
             data: catalogs,
             meta: {

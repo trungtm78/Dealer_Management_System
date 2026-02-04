@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from 'react';
-import { CustomerSearch } from "@/components/common/CustomerSearch";
+import { SmartSelect } from "@/components/SmartSelect";
+import type { SelectDataSource } from "@/types/smart-select";
 import { Save, Mail, Printer, ChevronDown, Gift, CreditCard, Calendar, FileText, Plus, X, Info, ChevronRight, Calculator, PieChart, TrendingUp, DollarSign, Settings, CheckCircle2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -32,7 +33,6 @@ interface Promotion {
     customItem?: string;
 }
 
-// Data Constants (Mock data for options only)
 const exteriorAccessories = [
     { id: 'body-kit', name: 'Body kit thể thao', price: 18500000, desc: 'Bộ body kit Honda chính hãng' },
     { id: 'spoiler', name: 'Cánh gió thể thao', price: 9500000, desc: 'Cánh gió carbon' },
@@ -75,23 +75,46 @@ const colors = [
     { id: 'silver', name: 'Bạc Ánh Kim', color: '#C0C0C0' },
 ];
 
+// DataSource for Customers
+const customerDataSource: SelectDataSource = {
+    search: async (req) => {
+        const response = await fetch('/api/shared/search/customers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(req)
+        });
+        return response.json();
+    }
+};
+
+// DataSource for Vehicle Models
+const vehicleModelDataSource: SelectDataSource = {
+    search: async (req) => {
+        const response = await fetch('/api/shared/search/vehicle-models', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(req)
+        });
+        return response.json();
+    }
+};
+
 export default function QuotationForm() {
     const router = useRouter();
 
-    // Form State
     const [customerId, setCustomerId] = useState<string | undefined>(undefined);
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
-    const [selectedModel, setSelectedModel] = useState('Honda CR-V');
+    const [selectedModel, setSelectedModel] = useState<number | null>(null);
     const [selectedVersion, setSelectedVersion] = useState('1.5 Turbo L');
     const [selectedColor, setSelectedColor] = useState('white');
 
+    const accessories = [...exteriorAccessories, ...interiorAccessories, ...techAccessories, ...protectionAccessories];
     const [selectedAccessories, setSelectedAccessories] = useState<string[]>([]);
     const [selectedServices, setSelectedServices] = useState<string[]>(['service-3times']);
     const [selectedPromotions, setSelectedPromotions] = useState<string[]>([]);
     const [activeTab, setActiveTab] = useState('basic');
 
-    // Validation State
     const [errors, setErrors] = useState<{ name?: string, phone?: string }>({});
 
     const validatePhone = (phone: string) => {
@@ -111,7 +134,6 @@ export default function QuotationForm() {
         return Object.keys(newErrors).length === 0;
     };
 
-    // Promotion State
     const [promotions, setPromotions] = useState<Promotion[]>([
         { id: 'promo-cash', name: 'Giảm giá tiền mặt', value: -10000000, desc: 'Giảm 10tr', type: 'discount' },
     ]);
@@ -120,27 +142,25 @@ export default function QuotationForm() {
     const [newPromoName, setNewPromoName] = useState('');
     const [newPromoValue, setNewPromoValue] = useState('');
 
-    // Analysis State
     const [actualCommission, setActualCommission] = useState<number>(5000000);
     const [discount, setDiscount] = useState<number>(0);
 
-    // Price Calculation Logic
     const getBasePrice = () => {
-        switch (selectedModel) {
-            case 'Honda CR-V': return 1109000000;
-            case 'Honda City': return 559000000;
-            case 'Honda Civic': return 730000000;
-            default: return 1319000000; // Accord
-        }
+        if (!selectedModel) return 0;
+        const modelPriceMap: Record<number, number> = {
+            1: 1109000000,
+            2: 559000000,
+            3: 730000000,
+            4: 1319000000
+        };
+        return modelPriceMap[selectedModel] || 0;
     };
+
     const basePrice = getBasePrice();
 
-    // Cost Constants
     const manufacturerCost = basePrice * 0.88;
     const operatingCost = 5000000;
     const marketingCost = 2000000;
-
-    const accessories = [...exteriorAccessories, ...interiorAccessories, ...techAccessories, ...protectionAccessories];
 
     const accessoriesTotal = accessories
         .filter(acc => selectedAccessories.includes(acc.id))
@@ -156,16 +176,14 @@ export default function QuotationForm() {
 
     const discountAmount = discount;
 
-    // Fees
-    const insurance = basePrice * 0.015; // 1.5%
-    const registrationTax = basePrice * 0.1; // 10%
-    const registration = 20000000; // Biển số HN/HCM
+    const insurance = basePrice * 0.015;
+    const registrationTax = basePrice * 0.1;
+    const registration = 20000000;
     const otherFees = 3000000;
 
     const otrTotal = basePrice + accessoriesTotal + servicesTotal + insurance + registrationTax + registration + otherFees;
     const finalTotal = otrTotal + promotionValue - discountAmount;
 
-    // Analysis Calculation
     const totalRevenue = finalTotal;
     const accessoryCost = accessoriesTotal * 0.6;
     const serviceCost = servicesTotal * 0.7;
@@ -187,13 +205,19 @@ export default function QuotationForm() {
         }
 
         try {
-            // Call SalesService
+            const modelNameMap: Record<number, string> = {
+                1: 'Honda CR-V',
+                2: 'Honda City',
+                3: 'Honda Civic',
+                4: 'Honda Accord'
+            };
+
             const result = await SalesService.createQuotation({
-                customerId, // Added customerId
+                customerId,
                 customerName,
                 customerPhone: customerPhone,
                 customerEmail: undefined,
-                model: selectedModel,
+                model: modelNameMap[selectedModel || 1],
                 version: selectedVersion,
                 color: selectedColor,
                 basePrice,
@@ -208,7 +232,7 @@ export default function QuotationForm() {
                 discount: discountAmount,
                 promotionValue,
                 totalPrice: finalTotal,
-                userId: 'user-1', // TODO: Get from session
+                userId: 'user-1',
             });
 
             if (result.success) {
@@ -225,7 +249,6 @@ export default function QuotationForm() {
 
     return (
         <div className="min-h-screen bg-gray-50 pb-20">
-            {/* Header */}
             <header className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-10">
                 <div className="flex items-center justify-between">
                     <div>
@@ -257,22 +280,26 @@ export default function QuotationForm() {
                         </TabsTrigger>
                     </TabsList>
 
-                    {/* TAB 1: BASIC INFO */}
                     <TabsContent value="basic" className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* Customer Info */}
                             <Card className="p-6">
                                 <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><div className='p-2 bg-blue-50 rounded-lg'><Info className='w-4 h-4 text-blue-600' /></div> Thông tin Khách hàng</h3>
                                 <div className="space-y-4">
                                     <div>
-                                        <Label>Tên khách hàng</Label>
-                                        <CustomerSearch
-                                            onSelect={(c) => {
-                                                setCustomerId(c.id); // Set ID
-                                                setCustomerName(c.name);
-                                                if (c.phone) setCustomerPhone(c.phone);
+                                        <SmartSelect
+                                            dataSource={customerDataSource}
+                                            value={customerId}
+                                            onChange={(id, item) => {
+                                                setCustomerId(id ? id.toString() : undefined);
+                                                if (item) {
+                                                    setCustomerName(item.label);
+                                                    setCustomerPhone((item.meta as any)?.phone || (item.meta as any)?.mobile || "");
+                                                }
                                             }}
+                                            label="Khách hàng"
                                             placeholder="Tìm khách hàng..."
+                                            required
+                                            context={{ onlyActive: true }}
                                             className="w-full"
                                         />
                                     </div>
@@ -301,21 +328,20 @@ export default function QuotationForm() {
                                 </div>
                             </Card>
 
-                            {/* Vehicle Info */}
                             <Card className="p-6">
                                 <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><div className='p-2 bg-red-50 rounded-lg'><Calculator className='w-4 h-4 text-red-600' /></div> Thông tin Xe</h3>
                                 <div className="space-y-4">
                                     <div>
-                                        <Label>Dòng xe</Label>
-                                        <Select value={selectedModel} onValueChange={setSelectedModel}>
-                                            <SelectTrigger><SelectValue /></SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="Honda CR-V">Honda CR-V</SelectItem>
-                                                <SelectItem value="Honda City">Honda City</SelectItem>
-                                                <SelectItem value="Honda Civic">Honda Civic</SelectItem>
-                                                <SelectItem value="Honda Accord">Honda Accord</SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                                        <SmartSelect
+                                            dataSource={vehicleModelDataSource}
+                                            value={selectedModel}
+                                            onChange={(id) => setSelectedModel(id as number | null)}
+                                            label="Dòng xe"
+                                            placeholder="Chọn dòng xe..."
+                                            required
+                                            context={{ onlyActive: true }}
+                                            className="w-full"
+                                        />
                                     </div>
                                     <div>
                                         <Label>Phiên bản</Label>
@@ -350,7 +376,6 @@ export default function QuotationForm() {
                             </Card>
                         </div>
 
-                        {/* Price Summary Preview */}
                         <Card className="p-6 border-t-4 border-t-gray-800">
                             <div className="flex justify-between items-center">
                                 <div>
@@ -362,15 +387,12 @@ export default function QuotationForm() {
                         </Card>
                     </TabsContent>
 
-                    {/* TAB 2: ACCESSORIES */}
                     <TabsContent value="accessories" className="space-y-6">
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             <div className="lg:col-span-2 space-y-6">
-                                {/* Accessories Groups */}
-                                {[
-                                    { title: 'Ngoại thất', items: exteriorAccessories },
-                                    { title: 'Nội thất', items: interiorAccessories },
-                                    { title: 'Công nghệ', items: techAccessories },
+                                {[{ title: 'Ngoại thất', items: exteriorAccessories },
+                                { title: 'Nội thất', items: interiorAccessories },
+                                { title: 'Công nghệ', items: techAccessories },
                                 ].map(group => (
                                     <Card key={group.title} className="p-4">
                                         <h4 className="font-semibold mb-3 border-b pb-2">{group.title}</h4>
@@ -394,7 +416,6 @@ export default function QuotationForm() {
                                 ))}
                             </div>
 
-                            {/* Summary Sidebar */}
                             <div className="space-y-6">
                                 <Card className="p-6 sticky top-24">
                                     <h3 className="font-bold text-lg mb-4">Tổng kết Phụ kiện & Dịch vụ</h3>
@@ -420,10 +441,8 @@ export default function QuotationForm() {
                         </div>
                     </TabsContent>
 
-                    {/* TAB 3: ANALYSIS */}
                     <TabsContent value="analysis" className="space-y-6">
                         <div className="grid grid-cols-1 gap-6">
-                            {/* Revenue / Cost Input */}
                             <Card className="p-6">
                                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
                                     <Settings className="w-5 h-5 text-gray-500" /> Thiết lập tham số tính toán
@@ -454,9 +473,7 @@ export default function QuotationForm() {
                                 </div>
                             </Card>
 
-                            {/* Analysis Dashboard */}
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                {/* Structure */}
                                 <Card className="p-6 border-l-4 border-l-blue-500">
                                     <h3 className="text-lg font-bold mb-4 text-blue-900">Doanh Thu (Revenue)</h3>
                                     <div className="space-y-3">

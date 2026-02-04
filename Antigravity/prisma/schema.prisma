@@ -60,45 +60,47 @@ model Contract {
 }
 
 model Customer {
-  id         String   @id @default(cuid())
-  name                  String
-  type                  String
-  phone                 String               @unique
-  mobile                String?
-  email                 String?
-  street                String?
-  ward                  String?
-  district              String?
-  city                  String?
-  vat                   String?
-  status                String               @default("ACTIVE")
-  tier                  String               @default("BRONZE")
-  points                Int                  @default(0)
-  total_points          Int                  @default(0)
-  tags                  String?
-  notes                 String?
-  member_since          DateTime             @default(now())
-  last_transaction_date DateTime?
-  deleted_at            DateTime?
-  created_at            DateTime             @default(now())
-  updated_at DateTime @default(now())
-  Complaint             Complaint[]
-  Contract              Contract[]
-  Deposit               Deposit[]
-  InsuranceContract     InsuranceContract[]
-  Interaction           Interaction[]
-  Invoice               Invoice[]
-  Lead                  Lead[]
-  LoyaltyTransaction    LoyaltyTransaction[]
-  Quotation             Quotation[]
-  Reminder              Reminder[]
-  RepairOrder           RepairOrder[]
-  ServiceAppointment    ServiceAppointment[]
-  ServiceQuote          ServiceQuote[]
-  TestDrive             TestDrive[]
+   id         String   @id @default(cuid())
+   name                  String
+   type                  String
+   phone                 String               @unique
+   mobile                String?
+   email                 String?
+   street                String?
+   ward                  String?
+   district              String?
+   city                  String?
+   vat                   String?
+   status                String               @default("ACTIVE")
+   tier                  String               @default("BRONZE")
+   points                Int                  @default(0)
+   total_points          Int                  @default(0)
+   tags                  String?
+   notes                 String?
+   member_since          DateTime             @default(now())
+   last_transaction_date DateTime?
+   deleted_at            DateTime?
+   created_at            DateTime             @default(now())
+   updated_at DateTime @default(now())
+   Complaint             Complaint[]
+   Contract              Contract[]
+   Deposit               Deposit[]
+   InsuranceContract     InsuranceContract[]
+   Interaction           Interaction[]
+   Invoice               Invoice[]
+   Lead                  Lead[]
+   LoyaltyTransaction    LoyaltyTransaction[]
+   Quotation             Quotation[]
+   Reminder              Reminder[]
+   RepairOrder           RepairOrder[]
+   ServiceAppointment    ServiceAppointment[]
+   ServiceQuote          ServiceQuote[]
+   TestDrive             TestDrive[]
 
-  @@index([tier])
-  @@index([phone])
+   @@index([status])
+   @@index([tier])
+   @@index([phone])
+   @@index([name])
 }
 
 model Deposit {
@@ -357,9 +359,11 @@ model Part {
   Supplier      Supplier?       @relation(fields: [supplier_id], references: [id])
   StockMovement StockMovement[]
   StockTakeItem StockTakeItem[]
+  PartVehicleCompatibility PartVehicleCompatibility[]
 
   @@index([category])
   @@index([part_number])
+  @@index([name])
 }
 
 model Payment {
@@ -623,19 +627,22 @@ model StockTakeItem {
 }
 
 model Supplier {
-  id         String   @id @default(cuid())
-  code           String          @unique
-  name           String
-  contact_person String?
-  phone          String?
-  email          String?
-  address        String?
-  payment_terms  String?
-  status         String          @default("ACTIVE")
-  created_at     DateTime        @default(now())
-  updated_at DateTime @default(now())
-  Part           Part[]
-  PurchaseOrder  PurchaseOrder[]
+   id         String   @id @default(cuid())
+   code           String          @unique
+   name           String
+   contact_person String?
+   phone          String?
+   email          String?
+   address        String?
+   payment_terms  String?
+   status         String          @default("ACTIVE")
+   created_at     DateTime        @default(now())
+   updated_at DateTime @default(now())
+   Part           Part[]
+   PurchaseOrder  PurchaseOrder[]
+
+   @@index([status])
+   @@index([name])
 }
 
 model SystemMetric {
@@ -876,7 +883,7 @@ model master_positions {
 model role_permissions {
   role_id       String
   permission_id String
-  Permission    Permission @relation(fields: [permission_id], references: [id], onDelete: Cascade)
+  permission    Permission @relation(fields: [permission_id], references: [id], onDelete: Cascade)
   Role          Role       @relation(fields: [role_id], references: [id], onDelete: Cascade)
 
   @@id([role_id, permission_id])
@@ -963,7 +970,12 @@ model vehicle_models {
   status     String    @default("ACTIVE")
   deleted_at DateTime?
   created_at DateTime  @default(now())
-  updated_at DateTime @default(now())
+  updated_at DateTime  @default(now())
+  PartVehicleCompatibility PartVehicleCompatibility[]
+
+  @@index([status])
+  @@index([model_code])
+  @@index([category])
 }
 
 model warehouses {

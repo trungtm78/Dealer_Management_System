@@ -1,24 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { parsePaginationParams, buildPaginationMeta, buildSearchWhereClause, calculateSkip } from "@/lib/utils/pagination";
 
 export async function GET(req: NextRequest) {
     try {
         const { searchParams } = new URL(req.url);
-        
-        const page = parseInt(searchParams.get('page') || '1');
-        const limit = parseInt(searchParams.get('limit') || '10');
-        const skip = (page - 1) * limit;
-        const search = searchParams.get('search') || '';
-        
-        const where: any = {};
-        
-        if (search) {
-            where.OR = [
-                { position_name: { contains: search } },
-                { position_code: { contains: search } }
-            ];
+        const forDropdown = searchParams.get('for_dropdown') === 'true';
+        const status = searchParams.get('status') || 'ACTIVE';
+
+        if (forDropdown) {
+            const positions = await prisma.master_positions.findMany({
+                where: { status },
+                select: { id: true, position_name: true, status: true },
+                orderBy: { position_name: 'asc' }
+            });
+            const dropdownData = positions.map(p => ({
+                id: p.id,
+                name: p.position_name,
+                status: p.status
+            }));
+            return NextResponse.json({ data: dropdownData });
         }
-        
+
+        const { page, limit, search, ...filters } = parsePaginationParams(searchParams, 5);
+        const skip = calculateSkip(page, limit);
+
+        const where: any = {
+            ...buildSearchWhereClause(search, ["position_name", "position_code"]),
+        };
+
+        if (filters.status) {
+            where.status = filters.status;
+        }
+
         const [total, positions] = await Promise.all([
             prisma.master_positions.count({ where }),
             prisma.master_positions.findMany({
@@ -28,15 +42,10 @@ export async function GET(req: NextRequest) {
                 orderBy: { created_at: 'desc' }
             })
         ]);
-        
+
         return NextResponse.json({
             data: positions,
-            meta: {
-                total,
-                page,
-                limit,
-                totalPages: Math.ceil(total / limit)
-            }
+            meta: buildPaginationMeta(total, page, limit)
         });
     } catch (error) {
         console.error('Failed to fetch positions:', error);

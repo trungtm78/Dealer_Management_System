@@ -1,24 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { parsePaginationParams, buildPaginationMeta, buildSearchWhereClause, calculateSkip } from "@/lib/utils/pagination";
 
 export async function GET(req: NextRequest) {
     try {
         const { searchParams } = new URL(req.url);
-        
-        const page = parseInt(searchParams.get('page') || '1');
-        const limit = parseInt(searchParams.get('limit') || '10');
-        const skip = (page - 1) * limit;
-        const search = searchParams.get('search') || '';
-        
-        const where: any = {};
-        
-        if (search) {
-            where.OR = [
-                { department_name: { contains: search } },
-                { department_code: { contains: search } }
-            ];
+        const forDropdown = searchParams.get('for_dropdown') === 'true';
+        const status = searchParams.get('status') || 'ACTIVE';
+
+        if (forDropdown) {
+            const departments = await prisma.master_departments.findMany({
+                where: { status },
+                select: { id: true, department_name: true, status: true },
+                orderBy: { department_name: 'asc' }
+            });
+            const dropdownData = departments.map(d => ({
+                id: d.id,
+                name: d.department_name,
+                status: d.status
+            }));
+            return NextResponse.json({ data: dropdownData });
         }
-        
+
+        const { page, limit, search, ...filters } = parsePaginationParams(searchParams, 5);
+        const skip = calculateSkip(page, limit);
+
+        const where: any = {
+            ...buildSearchWhereClause(search, ["department_name", "department_code"]),
+        };
+
+        if (filters.status) {
+            where.status = filters.status;
+        }
+
         const [total, departments] = await Promise.all([
             prisma.master_departments.count({ where }),
             prisma.master_departments.findMany({
@@ -28,15 +42,10 @@ export async function GET(req: NextRequest) {
                 orderBy: { created_at: 'desc' }
             })
         ]);
-        
+
         return NextResponse.json({
             data: departments,
-            meta: {
-                total,
-                page,
-                limit,
-                totalPages: Math.ceil(total / limit)
-            }
+            meta: buildPaginationMeta(total, page, limit)
         });
     } catch (error) {
         console.error('Failed to fetch departments:', error);

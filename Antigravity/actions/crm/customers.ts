@@ -12,8 +12,98 @@ const safeRevalidatePath = (path: string) => {
     }
 };
 import { CustomerDTO } from "@/lib/types/crm";
+import { SearchRequest, SearchResponse, SelectItem } from "@/types/smart-select";
 
 // --- CRUD Operations ---
+
+export async function searchCustomersAdvanced(req: SearchRequest): Promise<SearchResponse> {
+    try {
+        const { q, context, limit = 20, cursor, filter } = req;
+        const normalizedQuery = q?.trim();
+
+        const where: any = {
+            AND: [] // Start with empty AND array
+        };
+
+        // 1. Context: Only Active
+        if (context?.onlyActive) {
+            where.AND.push({ status: 'ACTIVE' });
+        }
+
+        // 2. Filter: Custom filters
+        if (filter) {
+            if (filter.categoryId) {
+                // Implement if category field exists, currently schema has 'type', 'tier', etc.
+                // Ignoring for now or map to type if appropriate
+            }
+            if (filter.excludedIds && Array.isArray(filter.excludedIds) && filter.excludedIds.length > 0) {
+                where.AND.push({ id: { notIn: filter.excludedIds as string[] } });
+            }
+        }
+
+        // 3. Search Logic
+        if (normalizedQuery && normalizedQuery.length > 0) {
+            where.AND.push({
+                OR: [
+                    { name: { contains: normalizedQuery } },
+                    { phone: { contains: normalizedQuery } },
+                    { mobile: { contains: normalizedQuery } },
+                    { email: { contains: normalizedQuery } },
+                    { vat: { contains: normalizedQuery } },
+                    // Support searching by ID if query looks like an ID? 
+                    // Usually ID is UUID, user won't type it. 
+                ]
+            });
+        }
+
+        const take = limit + 1; // Fetch one extra to determine next cursor
+
+        const queryArgs: any = {
+            where,
+            take,
+            orderBy: [
+                { created_at: 'desc' },
+                { id: 'desc' }
+            ],
+        };
+
+        if (cursor) {
+            queryArgs.cursor = { id: cursor };
+            queryArgs.skip = 1; // Skip the cursor item itself
+        }
+
+        const customers = await prisma.customer.findMany(queryArgs);
+
+        let nextCursor: string | null = null;
+        if (customers.length > limit) {
+            const nextItem = customers.pop(); // Remove the extra item
+            // The cursor for the next page is the ID of the *last* item of *this* page (which is the one before the popped item)
+            // Wait. If we popped, customers length is now limit. The last item in customers is the cursor.
+            // Actually, Prisma cursor pagination: current cursor points to the item *before* the next page.
+            // So nextCursor = customers[limit-1].id. 
+            // Correction: The `cursor` in findMany points to the place where we *start*.
+            // If we fetched limit+1, it means there is a next page starting after the last valid item.
+            // So nextCursor should be the ID of the last item in the *returned* list (the one we keep).
+            // Next request will use this ID as cursor and skip: 1.
+            if (customers.length > 0) {
+                nextCursor = customers[customers.length - 1].id;
+            }
+        }
+
+        const items: SelectItem[] = customers.map(c => ({
+            id: c.id,
+            label: c.name,
+            subtitle: [c.phone || c.mobile, c.email, c.vat].filter(Boolean).join(" • "),
+            meta: mapToDTO(c)
+        }));
+
+        return { items, nextCursor };
+
+    } catch (error) {
+        console.error("Advanced search failed:", error);
+        return { items: [] };
+    }
+}
 
 export async function getCustomers(query?: string) {
     try {
@@ -190,9 +280,9 @@ export async function convertLeadToCustomer(leadId: string) {
         });
 
         if (existing) {
-            return { 
-                success: false, 
-                error: "Số điện thoại đã tồn tại trong hệ thống. Không thể tạo khách hàng mới." 
+            return {
+                success: false,
+                error: "Số điện thoại đã tồn tại trong hệ thống. Không thể tạo khách hàng mới."
             };
         }
 
@@ -252,20 +342,20 @@ export async function deleteCustomer(id: string) {
         });
 
         if (activeContracts > 0) {
-            return { 
-                success: false, 
-                error: "Không thể xóa khách hàng vì có hợp đồng đang hoạt động. Vui lòng hủy tất cả hợp đồng trước khi xóa." 
+            return {
+                success: false,
+                error: "Không thể xóa khách hàng vì có hợp đồng đang hoạt động. Vui lòng hủy tất cả hợp đồng trước khi xóa."
             };
         }
 
         // FK Validation: Check for other restricted relationships
         const { FKValidator } = await import('@/middleware/fk_validation');
         const fkValidation = await FKValidator.validateBeforeDelete('customers', id);
-        
+
         if (!fkValidation.valid) {
-            return { 
-                success: false, 
-                error: fkValidation.error || "Không thể xóa khách hàng vì có bản ghi liên quan đang tồn tại." 
+            return {
+                success: false,
+                error: fkValidation.error || "Không thể xóa khách hàng vì có bản ghi liên quan đang tồn tại."
             };
         }
 
@@ -278,7 +368,7 @@ export async function deleteCustomer(id: string) {
         // Soft delete: UPDATE status = 'INACTIVE' and set deleted_at
         const updatedCustomer = await prisma.customer.update({
             where: { id },
-            data: { 
+            data: {
                 status: 'INACTIVE',
                 deleted_at: new Date()
             }

@@ -4,6 +4,23 @@ import { createUser } from "@/actions/admin/users";
 
 export async function GET(req: NextRequest) {
     try {
+        const { searchParams } = new URL(req.url);
+        const forDropdown = searchParams.get('for_dropdown') === 'true';
+
+        if (forDropdown) {
+            const users = await prisma.user.findMany({
+                where: { status: 'ACTIVE' },
+                select: { id: true, name: true, status: true },
+                orderBy: { name: 'asc' }
+            });
+            const dropdownData = users.map(u => ({
+                id: u.id,
+                name: u.name,
+                status: u.status
+            }));
+            return NextResponse.json({ data: dropdownData });
+        }
+
         const users = await prisma.user.findMany({
             orderBy: { created_at: 'desc' }
         });

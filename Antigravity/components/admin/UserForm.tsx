@@ -9,6 +9,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { SmartSelect } from "@/components/SmartSelect";
+import type { SelectDataSource } from "@/types/smart-select";
 import { Loader2 } from "lucide-react";
 import { CreateUserInput } from "@/lib/types/admin";
 
@@ -26,8 +28,32 @@ interface UserFormProps {
   onSubmit: (data: CreateUserInput) => Promise<void>;
 }
 
+const roleDataSource: SelectDataSource = {
+  search: async (req) => {
+    const res = await fetch('/api/shared/search/roles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req)
+    });
+    return res.json();
+  }
+};
+
+const departmentDataSource: SelectDataSource = {
+  search: async (req) => {
+    const res = await fetch('/api/shared/search/departments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req)
+    });
+    return res.json();
+  }
+};
+
 export default function UserForm({ open, onOpenChange, onSubmit }: UserFormProps) {
   const [loading, setLoading] = useState(false);
+  const [roleId, setRoleId] = useState<number | null>(null);
+  const [departmentId, setDepartmentId] = useState<number | null>(null);
 
   const form = useForm<z.infer<typeof userSchema>>({
     resolver: zodResolver(userSchema),
@@ -86,42 +112,43 @@ export default function UserForm({ open, onOpenChange, onSubmit }: UserFormProps
               )}
             />
             <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Vai trò</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Chọn vai trò" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="ADMIN">Quản trị viên</SelectItem>
-                        <SelectItem value="MANAGER">Quản lý</SelectItem>
-                        <SelectItem value="SALES">Nhân viên bán hàng</SelectItem>
-                        <SelectItem value="SERVICE">Cố vấn dịch vụ</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="department"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Phòng ban</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Kinh doanh" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div>
+                <SmartSelect
+                  dataSource={roleDataSource}
+                  value={roleId}
+                  onChange={(id, item) => {
+                    setRoleId(id as number | null);
+                    if (item) {
+                      form.setValue("role", item.label || "");
+                    } else {
+                      form.setValue("role", "");
+                    }
+                  }}
+                  label="Vai trò"
+                  placeholder="Chọn vai trò..."
+                  required
+                  context={{ onlyActive: true }}
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <SmartSelect
+                  dataSource={departmentDataSource}
+                  value={departmentId}
+                  onChange={(id, item) => {
+                    setDepartmentId(id as number | null);
+                    if (item) {
+                      form.setValue("department", item.label || "");
+                    } else {
+                      form.setValue("department", "");
+                    }
+                  }}
+                  label="Phòng ban"
+                  placeholder="Chọn phòng ban..."
+                  context={{ onlyActive: true }}
+                  className="w-full"
+                />
+              </div>
             </div>
             <FormField
               control={form.control}

@@ -1,29 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
-import { EntityValidators } from '@/lib/entity-validators'
+import { parsePaginationParams, buildPaginationMeta, buildSearchWhereClause, calculateSkip } from "@/lib/utils/pagination";
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
+    const forDropdown = searchParams.get('for_dropdown') === 'true';
+    const status = searchParams.get('status') || 'ACTIVE';
 
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
-    const skip = (page - 1) * limit
-    const search = searchParams.get('name') || ''
-    const status = searchParams.get('status') || ''
-
-    const where: any = {}
-
-    if (search) {
-      where.OR = [
-        { warehouse_name: { contains: search } },
-        { warehouse_code: { contains: search } }
-      ]
+    if (forDropdown) {
+      const warehouses = await prisma.warehouses.findMany({
+        where: { is_active: status === 'ACTIVE' },
+        select: { id: true, warehouse_name: true, is_active: true },
+        orderBy: { warehouse_name: 'asc' }
+      });
+      const dropdownData = warehouses.map(w => ({
+        id: w.id,
+        name: w.warehouse_name,
+        status: w.is_active ? 'ACTIVE' : 'INACTIVE'
+      }));
+      return NextResponse.json({ data: dropdownData });
     }
 
-    // Fix: handle boolean status properly
-    if (status) {
-      where.is_active = status === 'ACTIVE'
+    const { page, limit, search, ...filters } = parsePaginationParams(searchParams, 5);
+    const skip = calculateSkip(page, limit);
+
+    const where: any = {
+      ...buildSearchWhereClause(search, ["warehouse_name", "warehouse_code"]),
+    };
+
+    if (filters.status) {
+      where.is_active = filters.status === 'ACTIVE';
     }
 
     const [total, warehouses] = await Promise.all([
@@ -38,12 +45,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       data: warehouses,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit)
-      }
+      meta: buildPaginationMeta(total, page, limit)
     })
   } catch (error) {
     console.error('Failed to fetch warehouses:', error)
@@ -65,7 +67,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check for duplicate warehouse_name
     const existingByName = await prisma.warehouses.findFirst({
       where: { warehouse_name: body.warehouse_name }
     })
@@ -77,7 +78,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check for duplicate warehouse_code if provided
     if (body.warehouse_code) {
       const existingByCode = await prisma.warehouses.findFirst({
         where: { warehouse_code: body.warehouse_code }
@@ -106,7 +106,6 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Failed to create warehouse:', error)
 
-    // Handle Prisma UNIQUE constraint violation
     if (error.code === 'P2002') {
       const target = error.meta?.target || []
       const field = target[0] || 'field'
@@ -123,4 +122,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-

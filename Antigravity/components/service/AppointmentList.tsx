@@ -7,12 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 import { CustomerSearch } from "@/components/common/CustomerSearch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SmartSelect } from "@/components/SmartSelect";
+import type { SelectDataSource } from "@/types/smart-select";
 
 export default function AppointmentList() {
     const [appointments, setAppointments] = useState<ServiceAppointmentDTO[]>([]);
@@ -20,6 +22,7 @@ export default function AppointmentList() {
 
     // Create Form State
     const [isOpen, setIsOpen] = useState(false);
+    const [selectedVehicleModelId, setSelectedVehicleModelId] = useState<number | null>(null);
     const [formData, setFormData] = useState({
         customerId: '',
         phone: '', // Auto-filled from customer
@@ -44,6 +47,17 @@ export default function AppointmentList() {
         loadData();
     }, []);
 
+    const vehicleModelDataSource: SelectDataSource = {
+        search: async (req) => {
+            const res = await fetch('/api/shared/search/vehicle-models', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(req)
+            });
+            return res.json();
+        }
+    };
+
     const handleCreate = async () => {
         // Validation
         if (!formData.customerId || !formData.date) {
@@ -66,6 +80,7 @@ export default function AppointmentList() {
                 setIsOpen(false);
                 loadData();
                 setFormData({ customerId: '', phone: '', plateNumber: '', vehicleModel: '', date: '', time: '', serviceType: 'PERIODIC', advisor: '' });
+                setSelectedVehicleModelId(null);
             } else {
                 toast.error(result.error);
             }
@@ -116,16 +131,19 @@ export default function AppointmentList() {
                                 <Input value={formData.plateNumber} onChange={e => setFormData({ ...formData, plateNumber: e.target.value })} placeholder="30A-..." />
                             </div>
                             <div className="space-y-2">
-                                <Label>Dòng xe</Label>
-                                <Select value={formData.vehicleModel} onValueChange={v => setFormData({ ...formData, vehicleModel: v })}>
-                                    <SelectTrigger><SelectValue placeholder="Chọn xe" /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Honda CR-V">Honda CR-V</SelectItem>
-                                        <SelectItem value="Honda City">Honda City</SelectItem>
-                                        <SelectItem value="Honda Civic">Honda Civic</SelectItem>
-                                        <SelectItem value="Honda HR-V">Honda HR-V</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <SmartSelect
+                                    dataSource={vehicleModelDataSource}
+                                    value={selectedVehicleModelId}
+                                    onChange={(id, item) => {
+                                        setSelectedVehicleModelId(id as number | null);
+                                        setFormData({ ...formData, vehicleModel: item?.label || "" });
+                                    }}
+                                    label="Dòng xe"
+                                    placeholder="Chọn xe"
+                                    required={false}
+                                    context={{ onlyActive: true }}
+                                    className="w-full"
+                                />
                             </div>
                             <div className="space-y-2">
                                 <Label>Ngày hẹn <span className="text-red-500">(*)</span></Label>

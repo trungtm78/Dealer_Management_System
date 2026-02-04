@@ -5,9 +5,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { SmartSelect } from "@/components/SmartSelect";
+import type { SelectDataSource } from "@/types/smart-select";
 
 interface BayAssignmentDialogProps {
     open: boolean;
@@ -18,7 +19,7 @@ interface BayAssignmentDialogProps {
 
 export default function BayAssignmentDialog({ open, onOpenChange, bayId, onSuccess }: BayAssignmentDialogProps) {
     const [repairOrders, setRepairOrders] = useState<any[]>([]);
-    const [selectedRO, setSelectedRO] = useState("");
+    const [selectedRO, setSelectedRO] = useState<number | null>(null);
     const [duration, setDuration] = useState("60");
     const [notes, setNotes] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -34,6 +35,17 @@ export default function BayAssignmentDialog({ open, onOpenChange, bayId, onSucce
         }
     }, [open]);
 
+    const repairOrderDataSource: SelectDataSource = {
+        search: async (req) => {
+            const res = await fetch('/api/shared/search/repair-orders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(req)
+            });
+            return res.json();
+        }
+    };
+
     const handleAssign = async () => {
         if (!selectedRO) {
             toast.error("Vui lòng chọn lệnh sửa chữa");
@@ -46,7 +58,7 @@ export default function BayAssignmentDialog({ open, onOpenChange, bayId, onSucce
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    repair_order_id: selectedRO,
+                    repair_order_id: String(selectedRO),
                     estimated_duration_minutes: Number(duration),
                     notes,
                     user_id: 'usr-admin' // Mock logged in user
@@ -76,35 +88,33 @@ export default function BayAssignmentDialog({ open, onOpenChange, bayId, onSucce
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                     <div className="grid gap-2">
-                        <Label htmlFor="ro">Chọn Lệnh sửa chữa (Chờ điều phối)</Label>
-                        <Select value={selectedRO} onValueChange={setSelectedRO}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Chọn RO..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {repairOrders.map(ro => (
-                                    <SelectItem key={ro.id} value={ro.id}>
-                                        {ro.ro_number} - {ro.customer?.name} ({ro.vehicle_info?.model})
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <Label>Chọn Lệnh sửa chữa (Chờ điều phối)</Label>
+                        <SmartSelect
+                            dataSource={repairOrderDataSource}
+                            value={selectedRO}
+                            onChange={(id, item) => setSelectedRO(id as number | null)}
+                            label="Lệnh Sửa Chữa"
+                            placeholder="Chọn RO..."
+                            required={true}
+                            filter={{ status: "PENDING" }}
+                            className="w-full"
+                        />
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="duration">Thời gian dự kiến (phút)</Label>
-                        <Input 
-                            id="duration" 
-                            type="number" 
-                            value={duration} 
-                            onChange={e => setDuration(e.target.value)} 
+                        <Input
+                            id="duration"
+                            type="number"
+                            value={duration}
+                            onChange={e => setDuration(e.target.value)}
                         />
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="notes">Ghi chú điều phối</Label>
-                        <Textarea 
-                            id="notes" 
-                            value={notes} 
-                            onChange={e => setNotes(e.target.value)} 
+                        <Textarea
+                            id="notes"
+                            value={notes}
+                            onChange={e => setNotes(e.target.value)}
                             placeholder="Nhập ghi chú cho kỹ thuật viên..."
                         />
                     </div>

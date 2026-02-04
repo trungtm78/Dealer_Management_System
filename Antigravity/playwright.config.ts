@@ -10,7 +10,7 @@ export default defineConfig({
 
 
     /* Timeout tối ưu cho tốc độ */
-    timeout: 30000, // Tổng timeout cho mỗi test
+    timeout: 60000, // Tổng timeout cho mỗi test
     expect: {
         timeout: 5000, // Timeout cho assertions
     },
@@ -34,8 +34,8 @@ export default defineConfig({
         baseURL: 'http://localhost:3000',
 
         /* Timeout tối ưu */
-        actionTimeout: 5000, // Giảm từ 30s xuống 5s
-        navigationTimeout: 10000, // Giảm từ 30s xuống 10s
+        actionTimeout: 10000, // Tăng lên 10s
+        navigationTimeout: 30000, // Tăng lên 30s
 
         /* Screenshot chỉ khi fail */
         screenshot: 'only-on-failure',

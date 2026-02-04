@@ -12,7 +12,8 @@ export const ServiceService = {
     getAppointments: async (): Promise<ServiceAppointmentDTO[]> => {
         const res = await fetch(`${API_BASE_URL}/appointments`, { cache: 'no-store' });
         if (!res.ok) throw new Error("Failed to fetch appointments");
-        return res.json();
+        const result = await res.json();
+        return result.data || [];
     },
 
     createAppointment: async (data: CreateAppointmentInput): Promise<{ success: boolean; data?: ServiceAppointmentDTO; error?: string }> => {
@@ -60,7 +61,8 @@ export const ServiceService = {
     getRepairOrders: async (): Promise<RepairOrderDTO[]> => {
         const res = await fetch(`${API_BASE_URL}/repair-orders`, { cache: 'no-store' });
         if (!res.ok) throw new Error("Failed to fetch ROs");
-        return res.json();
+        const result = await res.json();
+        return result.data || [];
     },
 
     createRepairOrder: async (data: CreateRepairOrderInput): Promise<{ success: boolean; data?: RepairOrderDTO; error?: string }> => {
@@ -103,7 +105,8 @@ export const ServiceService = {
         if (query) url.searchParams.append('query', query);
         const res = await fetch(url.toString(), { cache: 'no-store' });
         if (!res.ok) throw new Error("Failed to fetch quotes");
-        return res.json();
+        const result = await res.json();
+        return result.data || [];
     },
 
     createQuote: async (data: any): Promise<{ success: boolean; data?: ServiceQuoteDTO; error?: string }> => {

@@ -15,7 +15,8 @@ export const InventoryService = {
         }
         const res = await fetch(url.toString(), { cache: 'no-store' });
         if (!res.ok) throw new Error("Failed to fetch parts");
-        return res.json();
+        const result = await res.json();
+        return result.data || [];
     },
 
     createPart: async (data: CreatePartInput): Promise<{ success: boolean; data?: PartDTO; error?: string }> => {

@@ -11,11 +11,15 @@ import { SalesService } from "@/services/sales.service";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SmartSelect } from "@/components/SmartSelect";
+import type { SelectDataSource } from "@/types/smart-select";
 
 export default function PdsList() {
     const [searchTerm, setSearchTerm] = useState("");
     const [pdsList, setPdsList] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [selectedVehicleModelId, setSelectedVehicleModelId] = useState<number | null>(null);
+    const [selectedInspectorId, setSelectedInspectorId] = useState<number | null>(null);
 
     useEffect(() => {
         loadPDS();
@@ -78,6 +82,28 @@ export default function PdsList() {
         inspectorId: ""
     });
 
+    const vehicleModelDataSource: SelectDataSource = {
+        search: async (req) => {
+            const res = await fetch('/api/shared/search/vehicle-models', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(req)
+            });
+            return res.json();
+        }
+    };
+
+    const inspectorDataSource: SelectDataSource = {
+        search: async (req) => {
+            const res = await fetch('/api/shared/search/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(req)
+            });
+            return res.json();
+        }
+    };
+
     const handleCreate = async () => {
         if (!newPds.vin || !newPds.model || !newPds.color) {
             toast.error("Vui lòng nhập VIN, dòng xe và màu sắc");
@@ -87,7 +113,7 @@ export default function PdsList() {
         try {
             const result = await SalesService.createPDS({
                 ...newPds,
-                inspectorId: newPds.inspectorId || undefined
+                inspectorId: selectedInspectorId ? String(selectedInspectorId) : undefined
             });
 
             if (result.success) {
@@ -99,6 +125,8 @@ export default function PdsList() {
                     color: "",
                     inspectorId: ""
                 });
+                setSelectedVehicleModelId(null);
+                setSelectedInspectorId(null);
                 loadPDS();
             } else {
                 toast.error(result.error || "Tạo PDS thất bại");
@@ -131,19 +159,19 @@ export default function PdsList() {
                                 <Input id="vin" placeholder="Nhập số khung..." value={newPds.vin} onChange={(e) => setNewPds({ ...newPds, vin: e.target.value })} />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="model">Dòng Xe <span className="text-red-500">*</span></Label>
-                                <Select value={newPds.model} onValueChange={(val) => setNewPds({ ...newPds, model: val })}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Chọn dòng xe" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="CR-V">Honda CR-V</SelectItem>
-                                        <SelectItem value="City">Honda City</SelectItem>
-                                        <SelectItem value="Civic">Honda Civic</SelectItem>
-                                        <SelectItem value="HR-V">Honda HR-V</SelectItem>
-                                        <SelectItem value="BR-V">Honda BR-V</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <SmartSelect
+                                    dataSource={vehicleModelDataSource}
+                                    value={selectedVehicleModelId}
+                                    onChange={(id, item) => {
+                                        setSelectedVehicleModelId(id as number | null);
+                                        setNewPds({ ...newPds, model: item?.label || "" });
+                                    }}
+                                    label="Dòng Xe"
+                                    placeholder="Chọn dòng xe"
+                                    required={true}
+                                    context={{ onlyActive: true }}
+                                    className="w-full"
+                                />
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="color">Màu Sắc <span className="text-red-500">*</span></Label>
@@ -161,16 +189,17 @@ export default function PdsList() {
                                 </Select>
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="inspector">Kiểm Tra Viên (Optional)</Label>
-                                <Select value={newPds.inspectorId} onValueChange={(val) => setNewPds({ ...newPds, inspectorId: val })}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Chọn KTV" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="user-tech-1">Nguyễn Văn A</SelectItem>
-                                        <SelectItem value="user-tech-2">Trần Văn B</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <SmartSelect
+                                    dataSource={inspectorDataSource}
+                                    value={selectedInspectorId}
+                                    onChange={(id, item) => {
+                                        setSelectedInspectorId(id as number | null);
+                                    }}
+                                    label="Kiểm Tra Viên"
+                                    placeholder="Chọn KTV"
+                                    required={false}
+                                    className="w-full"
+                                />
                             </div>
                             <Button onClick={handleCreate} className="w-full mt-2 bg-[#E60012] hover:bg-[#CC0010]">Tạo Yêu Cầu</Button>
                         </div>

@@ -27,12 +27,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SmartSelect } from "@/components/SmartSelect";
+import type { SelectDataSource } from "@/types/smart-select";
 
 export default function PurchaseList() {
     const [pos, setPos] = useState<PurchaseOrder[]>([]);
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     const [isOpen, setIsOpen] = useState(false);
+    const [selectedSupplierId, setSelectedSupplierId] = useState<number | null>(null);
     const [newPO, setNewPO] = useState({
         supplierId: '',
         totalAmount: 0 // Simplified for demo, normally calculated from items
@@ -72,6 +74,17 @@ export default function PurchaseList() {
         setPos(PartsDataService.getPurchaseOrders());
     };
 
+    const supplierDataSource: SelectDataSource = {
+        search: async (req) => {
+            const res = await fetch('/api/shared/search/suppliers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(req)
+            });
+            return res.json();
+        }
+    };
+
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'RECEIVED': return <Badge className="bg-green-600">Đã Nhập Kho</Badge>;
@@ -101,18 +114,20 @@ export default function PurchaseList() {
                                 <DialogTitle>Tạo Đơn Mua Hàng (PO)</DialogTitle>
                             </DialogHeader>
                             <div className="grid gap-4 py-4">
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="supplier" className="text-right">Nhà Cung Cấp</Label>
-                                    <Select onValueChange={(val) => setNewPO({ ...newPO, supplierId: val })}>
-                                        <SelectTrigger className="col-span-3">
-                                            <SelectValue placeholder="Chọn NCC" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {suppliers.map(s => (
-                                                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                <div className="grid gap-2">
+                                    <SmartSelect
+                                        dataSource={supplierDataSource}
+                                        value={selectedSupplierId}
+                                        onChange={(id, item) => {
+                                            setSelectedSupplierId(id as number | null);
+                                            setNewPO({ ...newPO, supplierId: id ? String(id) : '' });
+                                        }}
+                                        label="Nhà Cung Cấp"
+                                        placeholder="Chọn NCC"
+                                        required={true}
+                                        context={{ onlyActive: true }}
+                                        className="w-full"
+                                    />
                                 </div>
                                 {/* Simplified form for demo */}
                                 <div className="text-sm text-muted-foreground text-center">

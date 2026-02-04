@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm, UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { SmartSelect } from "@/components/SmartSelect";
+import type { SelectDataSource } from "@/types/smart-select";
 import { Save, Calculator } from "lucide-react";
 
 const contractFormSchema = z.object({
@@ -38,11 +40,45 @@ interface InsuranceContractFormProps {
   isLoading?: boolean;
 }
 
-export default function InsuranceContractForm({ 
-  onSubmit, 
-  onCancel, 
-  initialValues, 
-  isLoading = false 
+// DataSources
+const customerDataSource: SelectDataSource = {
+  search: async (req) => {
+    const res = await fetch('/api/shared/search/customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req)
+    });
+    return res.json();
+  }
+};
+
+const vehicleModelDataSource: SelectDataSource = {
+  search: async (req) => {
+    const res = await fetch('/api/shared/search/vehicle-models', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req)
+    });
+    return res.json();
+  }
+};
+
+const providerDataSource: SelectDataSource = {
+  search: async (req) => {
+    const res = await fetch('/api/shared/search/providers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req)
+    });
+    return res.json();
+  }
+};
+
+export default function InsuranceContractForm({
+  onSubmit,
+  onCancel,
+  initialValues,
+  isLoading = false
 }: InsuranceContractFormProps) {
   const form = useForm<ContractFormValues>({
     resolver: zodResolver(contractFormSchema),
@@ -65,6 +101,9 @@ export default function InsuranceContractForm({
   });
 
   const [isCalculating, setIsCalculating] = useState(false);
+  const [customerId, setCustomerId] = useState<number | null>(null);
+  const [vehicleModelId, setVehicleModelId] = useState<number | null>(null);
+  const [providerId, setProviderId] = useState<number | null>(null);
 
   const handleCalculatePremium = async () => {
     const vehicleMake = form.getValues("vehicleMake");
@@ -81,12 +120,12 @@ export default function InsuranceContractForm({
     try {
       // Simulate API call for premium calculation
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       // Mock premium calculation (2-5% of coverage amount based on vehicle value and age)
       const basePremium = parseFloat(coverageAmount) * 0.03;
       const yearFactor = 2024 - parseInt(vehicleYear) > 5 ? 1.2 : 1.0;
       const makeFactor = vehicleMake === "Honda" ? 0.9 : 1.1;
-      
+
       const calculatedPremium = Math.round(basePremium * yearFactor * makeFactor);
       form.setValue("premium", calculatedPremium.toString());
     } catch (error) {
@@ -111,14 +150,36 @@ export default function InsuranceContractForm({
                 <CardTitle>Thông Tin Khách Hàng</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div>
+                  <SmartSelect
+                    dataSource={customerDataSource}
+                    value={customerId?.toString()}
+                    onChange={(id, item) => {
+                      setCustomerId(id ? parseInt(id as string) : null);
+                      if (item) {
+                        form.setValue("customerName", item.label);
+                        form.setValue("customerPhone", (item.meta as any)?.phone || "");
+                        form.setValue("customerEmail", (item.meta as any)?.email || "");
+                      } else {
+                        form.setValue("customerName", "");
+                        form.setValue("customerPhone", "");
+                        form.setValue("customerEmail", "");
+                      }
+                    }}
+                    label="Khách hàng"
+                    placeholder="Tìm khách hàng..."
+                    required
+                    context={{ onlyActive: true }}
+                    className="w-full"
+                  />
+                </div>
                 <FormField
                   control={form.control}
                   name="customerName"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Họ và Tên</FormLabel>
+                    <FormItem className="hidden">
                       <FormControl>
-                        <Input placeholder="Nhập họ và tên khách hàng" {...field} />
+                        <Input {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -128,10 +189,9 @@ export default function InsuranceContractForm({
                   control={form.control}
                   name="customerPhone"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Điện Thoại</FormLabel>
+                    <FormItem className="hidden">
                       <FormControl>
-                        <Input placeholder="Nhập số điện thoại" {...field} />
+                        <Input {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -141,10 +201,9 @@ export default function InsuranceContractForm({
                   control={form.control}
                   name="customerEmail"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
+                    <FormItem className="hidden">
                       <FormControl>
-                        <Input placeholder="Nhập email" type="email" {...field} />
+                        <Input {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -196,14 +255,34 @@ export default function InsuranceContractForm({
                     </FormItem>
                   )}
                 />
+                <div>
+                  <SmartSelect
+                    dataSource={vehicleModelDataSource}
+                    value={vehicleModelId}
+                    onChange={(id, item) => {
+                      setVehicleModelId(id as number | null);
+                      if (item) {
+                        form.setValue("vehicleModel", item.label);
+                        form.setValue("vehicleMake", (item.meta as any)?.brand || "Honda");
+                      } else {
+                        form.setValue("vehicleModel", "");
+                        form.setValue("vehicleMake", "");
+                      }
+                    }}
+                    label="Dòng xe"
+                    placeholder="Chọn dòng xe..."
+                    required
+                    context={{ onlyActive: true }}
+                    className="w-full"
+                  />
+                </div>
                 <FormField
                   control={form.control}
                   name="vehicleModel"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Dòng xe</FormLabel>
+                    <FormItem className="hidden">
                       <FormControl>
-                        <Input placeholder="Nhập dòng xe" {...field} />
+                        <Input {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -231,26 +310,29 @@ export default function InsuranceContractForm({
                 <CardTitle>Thông Tin Bảo Hiểm</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div>
+                  <FormField
+                    control={form.control}
+                    name="provider"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nhà cung cấp bảo hiểm *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Nhập tên nhà cung cấp" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
                 <FormField
                   control={form.control}
                   name="provider"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nhà cung cấp</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Chọn nhà cung cấp" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="Bảo Việt">Bảo Việt</SelectItem>
-                          <SelectItem value="Prudential">Prudential</SelectItem>
-                          <SelectItem value="Manulife">Manulife</SelectItem>
-                          <SelectItem value="PVI">PVI</SelectItem>
-                          <SelectItem value="Bảo Minh">Bảo Minh</SelectItem>
-                        </SelectContent>
-                      </Select>
+                    <FormItem className="hidden">
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -356,17 +438,17 @@ export default function InsuranceContractForm({
 
           {/* Action Buttons */}
           <div className="flex justify-end space-x-4">
-            <Button 
-              type="button" 
-              variant="outline" 
+            <Button
+              type="button"
+              variant="outline"
               onClick={onCancel}
               disabled={isLoading}
             >
               Hủy
             </Button>
-            <Button 
-              type="submit" 
-              className="bg-[#E60012] hover:bg-[#B8000E]" 
+            <Button
+              type="submit"
+              className="bg-[#E60012] hover:bg-[#B8000E]"
               disabled={isLoading || isCalculating}
             >
               <Save className="mr-2 h-4 w-4" />

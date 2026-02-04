@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { CustomerCreateInput, CustomerDTO } from "@/lib/types/crm";
 import { createCustomer } from "@/actions/crm/customers";
+import { parsePaginationParams, buildPaginationMeta, buildSearchWhereClause, calculateSkip } from "@/lib/utils/pagination";
 
 // DTO Mapper
 function mapToDTO(c: any): CustomerDTO {
@@ -23,35 +24,61 @@ function mapToDTO(c: any): CustomerDTO {
         points: c.points,
         total_points: c.total_points || c.points || 0,
         tags: c.tags,
-        member_since: c.member_since.toISOString().split('T')[0],
-        updated_at: c.updated_at.toISOString()
+        member_since: c.member_since ? c.member_since.toISOString().split('T')[0] : '',
+        updated_at: c.updated_at ? c.updated_at.toISOString() : ''
     };
 }
 
 // GET /api/crm/customers
 export async function GET(req: NextRequest) {
     try {
-        const searchParams = req.nextUrl.searchParams;
-        const query = searchParams.get('query');
+        const { searchParams } = new URL(req.url);
+        const forDropdown = searchParams.get('for_dropdown') === 'true';
+        const status = searchParams.get('status') || 'ACTIVE';
 
-        const where: any = {};
-        if (query) {
-            where.OR = [
-                { name: { contains: query } },
-                { phone: { contains: query } },
-                { mobile: { contains: query } },
-                { email: { contains: query } },
-                { vat: { contains: query } }
-            ];
+        if (forDropdown) {
+            const customers = await prisma.customer.findMany({
+                where: { status },
+                select: { id: true, name: true, status: true },
+                orderBy: { name: 'asc' }
+            });
+            const dropdownData = customers.map(c => ({
+                id: c.id,
+                name: c.name,
+                status: c.status
+            }));
+            return NextResponse.json({ data: dropdownData });
         }
 
-        const customers = await prisma.customer.findMany({
-            where,
-            orderBy: { created_at: "desc" },
-            take: 50
-        });
+        const { page, limit, search, ...filters } = parsePaginationParams(searchParams, 5);
+        const skip = calculateSkip(page, limit);
 
-        return NextResponse.json(customers.map(mapToDTO));
+        const where: any = {
+            ...buildSearchWhereClause(search, ["name", "phone", "mobile", "email", "vat"]),
+        };
+
+        if (filters.type) {
+            where.type = filters.type;
+        }
+
+        if (filters.status) {
+            where.status = filters.status;
+        }
+
+        const [total, customers] = await Promise.all([
+            prisma.customer.count({ where }),
+            prisma.customer.findMany({
+                where,
+                orderBy: { created_at: "desc" },
+                skip,
+                take: limit
+            })
+        ]);
+
+        return NextResponse.json({
+            data: customers.map(mapToDTO),
+            meta: buildPaginationMeta(total, page, limit)
+        });
     } catch (error) {
         console.error("API Error [GET /api/crm/customers]:", error);
         return NextResponse.json({ error: "Failed to fetch customers" }, { status: 500 });

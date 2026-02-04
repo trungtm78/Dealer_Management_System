@@ -1,62 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { parsePaginationParams, buildPaginationMeta, buildSearchWhereClause, calculateSkip } from "@/lib/utils/pagination";
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
+    const { page, limit, search, ...filters } = parsePaginationParams(searchParams, 5);
+    const skip = calculateSkip(page, limit);
 
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
-    const skip = (page - 1) * limit
+    const where: any = {
+      ...buildSearchWhereClause(search, ["full_name", "employee_code"]),
+    };
 
-    // Build where clause
-    const where: any = {}
-
-    if (searchParams.get('name')) {
-      where.full_name = {
-        contains: searchParams.get('name'),
-        mode: 'insensitive'
-      }
+    if (filters.department_id) {
+      where.department_id = filters.department_id
     }
 
-    if (searchParams.get('department_id')) {
-      where.department_id = searchParams.get('department_id')
+    if (filters.position_id) {
+      where.position_id = filters.position_id
     }
 
-    if (searchParams.get('position_id')) {
-      where.position_id = searchParams.get('position_id')
+    if (filters.level_id) {
+      where.level_id = filters.level_id
     }
 
-    if (searchParams.get('level_id')) {
-      where.level_id = searchParams.get('level_id')
+    if (filters.status) {
+      where.status = filters.status
     }
 
-    if (searchParams.get('status')) {
-      where.status = searchParams.get('status')
-    }
+    const [total, employees] = await Promise.all([
+      prisma.employees.count({ where }),
+      prisma.employees.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { created_at: 'desc' }
+      })
+    ])
 
-    // Get total count for pagination
-    const total = await prisma.employees.count({ where })
-
-    // Get employees with pagination
-    const employees = await prisma.employees.findMany({
-      where,
-      skip,
-      take: limit,
-      orderBy: { created_at: 'desc' }
-    })
-
-    const result = {
+    return NextResponse.json({
       data: employees,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit)
-      }
-    }
-
-    return NextResponse.json(result)
+      meta: buildPaginationMeta(total, page, limit)
+    })
   } catch (error) {
     console.error('Failed to fetch employees:', error)
     return NextResponse.json(
@@ -70,7 +55,6 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
-    // Validate required fields
     if (!body.full_name) {
       return NextResponse.json(
         { error: 'full_name is required' },
@@ -78,7 +62,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check for duplicate employee_code if provided
     if (body.employee_code) {
       const existingByCode = await prisma.employees.findFirst({
         where: { employee_code: body.employee_code }
@@ -92,7 +75,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check for duplicate user_id if provided
     if (body.user_id) {
       const existingByUserId = await prisma.employees.findFirst({
         where: { user_id: body.user_id }
@@ -123,7 +105,6 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Failed to create employee:', error)
 
-    // Handle Prisma UNIQUE constraint violation
     if (error.code === 'P2002') {
       const target = error.meta?.target || []
       const field = target[0] || 'field'

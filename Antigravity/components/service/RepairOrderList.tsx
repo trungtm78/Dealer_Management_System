@@ -12,9 +12,11 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Wrench, Settings, Plus, User } from "lucide-react";
 import { toast } from "sonner";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { CustomerSearch } from "@/components/common/CustomerSearch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SmartSelect } from "@/components/SmartSelect";
+import type { SelectDataSource } from "@/types/smart-select";
 
 export default function RepairOrderList() {
     const [ros, setRos] = useState<RepairOrderDTO[]>([]);
@@ -31,6 +33,8 @@ export default function RepairOrderList() {
         mileage: 0,
         advisor: ""
     });
+    const [selectedVehicleModelId, setSelectedVehicleModelId] = useState<number | null>(null);
+    const [selectedTechnicianId, setSelectedTechnicianId] = useState<number | null>(null);
 
     const loadData = async () => {
         try {
@@ -48,6 +52,28 @@ export default function RepairOrderList() {
     useEffect(() => {
         loadData();
     }, []);
+
+    const vehicleModelDataSource: SelectDataSource = {
+        search: async (req) => {
+            const res = await fetch('/api/shared/search/vehicle-models', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(req)
+            });
+            return res.json();
+        }
+    };
+
+    const technicianDataSource: SelectDataSource = {
+        search: async (req) => {
+            const res = await fetch('/api/shared/search/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(req)
+            });
+            return res.json();
+        }
+    };
 
     const handleAssignTech = async (roId: string, techId: string) => {
         try {
@@ -142,16 +168,19 @@ export default function RepairOrderList() {
                                     <Input id="plate" value={newRO.plateNumber} onChange={(e) => setNewRO({ ...newRO, plateNumber: e.target.value })} placeholder="30A-123.45" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="model">Dòng Xe</Label>
-                                    <Select value={newRO.model} onValueChange={(val) => setNewRO({ ...newRO, model: val })}>
-                                        <SelectTrigger><SelectValue placeholder="Chọn xe" /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="Honda CR-V">Honda CR-V</SelectItem>
-                                            <SelectItem value="Honda City">Honda City</SelectItem>
-                                            <SelectItem value="Honda Civic">Honda Civic</SelectItem>
-                                            <SelectItem value="Honda HR-V">Honda HR-V</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                                    <SmartSelect
+                                        dataSource={vehicleModelDataSource}
+                                        value={selectedVehicleModelId}
+                                        onChange={(id, item) => {
+                                            setSelectedVehicleModelId(id as number | null);
+                                            setNewRO({ ...newRO, model: item?.label || "" });
+                                        }}
+                                        label="Dòng Xe"
+                                        placeholder="Chọn xe"
+                                        required={false}
+                                        context={{ onlyActive: true }}
+                                        className="w-full"
+                                    />
                                 </div>
                             </div>
                             <div className="space-y-2">
@@ -256,16 +285,15 @@ export default function RepairOrderList() {
                                     <Card className="p-4 bg-gray-50">
                                         <Label className="mb-2 block">Chọn Kỹ Thuật Viên <span className="text-red-500">(*)</span></Label>
                                         <div className="flex gap-2">
-                                            <Select onValueChange={(val) => handleAssignTech(selectedRO.id, val)} value={selectedRO.technicianId || ""}>
-                                                <SelectTrigger className="w-[280px]">
-                                                    <SelectValue placeholder={selectedRO.technicianName || "Chưa phân công"} />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {techs.map(t => (
-                                                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                            <SmartSelect
+                                                dataSource={technicianDataSource}
+                                                value={selectedRO.technicianId ? String(selectedRO.technicianId) : undefined}
+                                                onChange={(id, item) => handleAssignTech(selectedRO.id, id ? String(id) : "")}
+                                                label="Kỹ Thuật Viên"
+                                                placeholder="Chọn KTV"
+                                                required={true}
+                                                className="w-[280px]"
+                                            />
                                         </div>
 
                                         <div className="mt-8 space-y-2">

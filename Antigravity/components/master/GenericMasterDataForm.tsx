@@ -3,11 +3,13 @@
 import React from 'react';
 import { Save, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { SmartSelect } from '@/components/SmartSelect';
+import type { SelectDataSource } from '@/types/smart-select';
 
 export interface FormField {
   name: string;
   label: string;
-  type: 'text' | 'number' | 'select' | 'date' | 'textarea' | 'email' | 'tel';
+  type: 'text' | 'number' | 'select' | 'date' | 'textarea' | 'email' | 'tel' | 'autocomplete';
   required?: boolean;
   placeholder?: string;
   options?: { value: string; label: string }[];
@@ -18,6 +20,8 @@ export interface FormField {
   step?: string;
   min?: number;
   max?: number;
+  resource?: string;
+  filters?: Record<string, any>;
 }
 
 export interface GenericFormProps {
@@ -175,6 +179,20 @@ export function GenericMasterDataForm({
           </div>
         );
 
+      case 'autocomplete':
+        // Note: This requires dataSource to be passed via custom field rendering
+        // Generic form doesn't have built-in datasource - caller must provide SmartSelect directly
+        return (
+          <div key={field.name} className={field.className || ''}>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {field.label}
+              {field.required && <span className="text-red-500"> *</span>}
+            </label>
+            <p className="text-sm text-gray-500">Autocomplete field - implement via customFields</p>
+            {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+          </div>
+        );
+
       default: // text
         return (
           <div key={field.name} className={field.className || ''}>
@@ -205,8 +223,8 @@ export function GenericMasterDataForm({
         <div className="p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold">{title}</h2>
-            <button 
-              onClick={onCancel} 
+            <button
+              onClick={onCancel}
               className="p-1 hover:bg-gray-100 rounded"
               disabled={isLoading}
             >
@@ -222,17 +240,17 @@ export function GenericMasterDataForm({
             {customFields}
 
             <div className="flex gap-3 pt-4">
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="bg-[#E60012]"
                 disabled={isLoading || hasErrors}
               >
                 <Save className="w-4 h-4 mr-2" />
                 {submitLabel || (isEditing ? 'Cập Nhật' : 'Thêm Mới')}
               </Button>
-              <Button 
-                type="button" 
-                variant="outline" 
+              <Button
+                type="button"
+                variant="outline"
                 onClick={onCancel}
                 disabled={isLoading}
               >

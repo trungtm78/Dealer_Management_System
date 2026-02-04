@@ -1,24 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { parsePaginationParams, buildPaginationMeta, buildSearchWhereClause, calculateSkip } from "@/lib/utils/pagination";
 
 export async function GET(req: NextRequest) {
     try {
         const { searchParams } = new URL(req.url);
-        
-        const page = parseInt(searchParams.get('page') || '1');
-        const limit = parseInt(searchParams.get('limit') || '10');
-        const skip = (page - 1) * limit;
-        const search = searchParams.get('search') || '';
-        
-        const where: any = {};
-        
-        if (search) {
-            where.OR = [
-                { model_name: { contains: search } },
-                { model_code: { contains: search } }
-            ];
+        const forDropdown = searchParams.get('for_dropdown') === 'true';
+        const status = searchParams.get('status') || 'ACTIVE';
+
+        if (forDropdown) {
+            const models = await prisma.vehicle_models.findMany({
+                where: { status },
+                select: { id: true, model_name: true, status: true },
+                orderBy: { model_name: 'asc' }
+            });
+            const dropdownData = models.map(m => ({
+                id: m.id,
+                name: m.model_name,
+                status: m.status
+            }));
+            return NextResponse.json({ data: dropdownData });
         }
-        
+
+        const { page, limit, search, ...filters } = parsePaginationParams(searchParams, 5);
+        const skip = calculateSkip(page, limit);
+
+        const where: any = {
+            ...buildSearchWhereClause(search, ["model_name", "model_code"]),
+        };
+
+        if (filters.status) {
+            where.status = filters.status;
+        }
+
         const [total, models] = await Promise.all([
             prisma.vehicle_models.count({ where }),
             prisma.vehicle_models.findMany({
@@ -28,15 +42,10 @@ export async function GET(req: NextRequest) {
                 orderBy: { created_at: 'desc' }
             })
         ]);
-        
+
         return NextResponse.json({
             data: models,
-            meta: {
-                total,
-                page,
-                limit,
-                totalPages: Math.ceil(total / limit)
-            }
+            meta: buildPaginationMeta(total, page, limit)
         });
     } catch (error) {
         console.error('Failed to fetch vehicle models:', error);

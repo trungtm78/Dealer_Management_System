@@ -6,10 +6,12 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { SmartSelect } from "@/components/SmartSelect";
+import type { SelectDataSource } from "@/types/smart-select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Plus, Edit, Trash2, Search, Filter } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Plus, Edit, Trash2, Search, Filter, Phone, Mail, MapPin } from "lucide-react"
 import { toast } from "sonner"
 
 interface Employee {
@@ -64,6 +66,9 @@ export function EmployeeManagement() {
     status: "ACTIVE",
     join_date: ""
   })
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | null>(null)
+  const [selectedPositionId, setSelectedPositionId] = useState<number | null>(null)
+  const [selectedLevelId, setSelectedLevelId] = useState<number | null>(null)
 
   // Mock data for departments, positions, levels
   const departments = [
@@ -99,6 +104,39 @@ export function EmployeeManagement() {
     { value: "ON_LEAVE", label: "On Leave" },
     { value: "TERMINATED", label: "Terminated" }
   ]
+
+  const departmentDataSource: SelectDataSource = {
+    search: async (req) => {
+      const res = await fetch('/api/shared/search/departments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(req)
+      });
+      return res.json();
+    }
+  };
+
+  const positionDataSource: SelectDataSource = {
+    search: async (req) => {
+      const res = await fetch('/api/shared/search/positions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(req)
+      });
+      return res.json();
+    }
+  };
+
+  const levelDataSource: SelectDataSource = {
+    search: async (req) => {
+      const res = await fetch('/api/shared/search/employee-levels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(req)
+      });
+      return res.json();
+    }
+  };
 
   useEffect(() => {
     fetchEmployees()
@@ -279,43 +317,49 @@ export function EmployeeManagement() {
                 />
               </div>
               <div>
-                <Label htmlFor="department">Department</Label>
-                <Select value={formData.department_id} onValueChange={(value) => setFormData({ ...formData, department_id: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments.map((dept) => (
-                      <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SmartSelect
+                  dataSource={departmentDataSource}
+                  value={selectedDepartmentId}
+                  onChange={(id, item) => {
+                    setSelectedDepartmentId(id as number | null);
+                    setFormData({ ...formData, department_id: id ? String(id) : "" });
+                  }}
+                  label="Phòng ban"
+                  placeholder="Chọn phòng ban..."
+                  required={false}
+                  context={{ onlyActive: true }}
+                  className="w-full"
+                />
               </div>
               <div>
-                <Label htmlFor="position">Position</Label>
-                <Select value={formData.position_id} onValueChange={(value) => setFormData({ ...formData, position_id: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select position" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {positions.map((pos) => (
-                      <SelectItem key={pos.id} value={pos.id}>{pos.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SmartSelect
+                  dataSource={positionDataSource}
+                  value={selectedPositionId}
+                  onChange={(id, item) => {
+                    setSelectedPositionId(id as number | null);
+                    setFormData({ ...formData, position_id: id ? String(id) : "" });
+                  }}
+                  label="Vị trí"
+                  placeholder="Chọn vị trí..."
+                  required={false}
+                  context={{ onlyActive: true }}
+                  className="w-full"
+                />
               </div>
               <div>
-                <Label htmlFor="level">Level</Label>
-                <Select value={formData.level_id} onValueChange={(value) => setFormData({ ...formData, level_id: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select level" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {levels.map((level) => (
-                      <SelectItem key={level.id} value={level.id}>{level.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SmartSelect
+                  dataSource={levelDataSource}
+                  value={selectedLevelId}
+                  onChange={(id, item) => {
+                    setSelectedLevelId(id as number | null);
+                    setFormData({ ...formData, level_id: id ? String(id) : "" });
+                  }}
+                  label="Cấp bậc"
+                  placeholder="Chọn cấp bậc..."
+                  required={false}
+                  context={{ onlyActive: true }}
+                  className="w-full"
+                />
               </div>
               <div>
                 <Label htmlFor="status">Status</Label>

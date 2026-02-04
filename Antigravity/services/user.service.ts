@@ -15,7 +15,8 @@ export const UserService = {
         }
         const res = await fetch(url.toString(), { cache: 'no-store' });
         if (!res.ok) throw new Error("Failed to fetch users");
-        return res.json();
+        const result = await res.json();
+        return result.data || [];
     },
 
     getTechnicians: async (): Promise<UserDTO[]> => {

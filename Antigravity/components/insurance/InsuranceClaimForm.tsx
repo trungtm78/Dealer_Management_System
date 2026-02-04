@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
+import { SmartSelect } from "@/components/SmartSelect";
+import type { SelectDataSource } from "@/types/smart-select";
 import { Save, Upload, FileText, Camera } from "lucide-react";
 
 const claimFormSchema = z.object({
@@ -35,15 +37,26 @@ interface InsuranceClaimFormProps {
   isLoading?: boolean;
 }
 
-export default function InsuranceClaimForm({ 
-  onSubmit, 
-  onCancel, 
-  initialValues, 
-  isLoading = false 
+const insuranceContractDataSource: SelectDataSource = {
+  search: async (req) => {
+    const res = await fetch('/api/shared/search/insurance-contracts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req)
+    });
+    return res.json();
+  }
+};
+
+export default function InsuranceClaimForm({
+  onSubmit,
+  onCancel,
+  initialValues,
+  isLoading = false
 }: InsuranceClaimFormProps) {
   const [isCalculating, setIsCalculating] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
-
+  const [contractId, setContractId] = useState<number | null>(null);
   const form = useForm<ClaimFormValues>({
     resolver: zodResolver(claimFormSchema),
     defaultValues: {
@@ -63,7 +76,7 @@ export default function InsuranceClaimForm({
 
   const handleCalculateAmount = async () => {
     const estimatedRepairCost = form.getValues("estimatedRepairCost");
-    
+
     if (!estimatedRepairCost) {
       form.setError("estimatedRepairCost", { message: "Vui lòng nhập chi phí sửa chữa ước tính" });
       return;
@@ -73,12 +86,12 @@ export default function InsuranceClaimForm({
     try {
       // Simulate API call for claim amount calculation
       await new Promise(resolve => setTimeout(resolve, 800));
-      
+
       // Mock calculation (claim amount is typically 80-95% of estimated repair cost)
       const estimatedCost = parseFloat(estimatedRepairCost);
       const claimPercentage = 0.9; // 90%
       const calculatedAmount = Math.round(estimatedCost * claimPercentage);
-      
+
       form.setValue("claimAmount", calculatedAmount.toString());
     } catch (error) {
       form.setError("claimAmount", { message: "Không thể tính số tiền bồi thường. Vui lòng thử lại." });
@@ -97,7 +110,7 @@ export default function InsuranceClaimForm({
       });
 
       setUploadedFiles(prev => [...prev, ...newFiles]);
-      
+
       // Update form state
       if (newFiles.some(file => file.type.startsWith('image/'))) {
         form.setValue('damagePhotos', true);
@@ -124,26 +137,33 @@ export default function InsuranceClaimForm({
                 <CardTitle>Thông Tin Hợp Đồng</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div>
+                  <SmartSelect
+                    dataSource={insuranceContractDataSource}
+                    value={contractId?.toString()}
+                    onChange={(id, item) => {
+                      setContractId(id ? parseInt(id as string) : null);
+                      if (item) {
+                        form.setValue("contractNumber", item.label);
+                      } else {
+                        form.setValue("contractNumber", "");
+                      }
+                    }}
+                    label="Số Hợp Đồng"
+                    placeholder="Chọn hợp đồng bảo hiểm..."
+                    required
+                    context={{ onlyActive: true }}
+                    className="w-full"
+                  />
+                </div>
                 <FormField
                   control={form.control}
                   name="contractNumber"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Số Hợp Đồng</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Chọn hợp đồng bảo hiểm" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="BH-2024-001">BH-2024-001 - Honda CR-V</SelectItem>
-                          <SelectItem value="BH-2024-002">BH-2024-002 - Honda Civic</SelectItem>
-                          <SelectItem value="BH-2024-003">BH-2024-003 - Honda City</SelectItem>
-                          <SelectItem value="BH-2024-004">BH-2024-004 - Honda HR-V</SelectItem>
-                          <SelectItem value="BH-2024-005">BH-2024-005 - Honda Accord</SelectItem>
-                        </SelectContent>
-                      </Select>
+                    <FormItem className="hidden">
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -213,10 +233,10 @@ export default function InsuranceClaimForm({
                       <FormLabel>Chi Phí Sửa Chữa Ước Tính (VNĐ)</FormLabel>
                       <div className="flex space-x-2">
                         <FormControl className="flex-1">
-                          <Input 
-                            placeholder="Nhập chi phí sửa chữa ước tính" 
-                            type="number" 
-                            {...field} 
+                          <Input
+                            placeholder="Nhập chi phí sửa chữa ước tính"
+                            type="number"
+                            {...field}
                           />
                         </FormControl>
                         <Button
@@ -241,10 +261,10 @@ export default function InsuranceClaimForm({
                     <FormItem>
                       <FormLabel>Số Tiền Yêu Cầu (VNĐ)</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="Nhập số tiền yêu cầu bồi thường" 
-                          type="number" 
-                          {...field} 
+                        <Input
+                          placeholder="Nhập số tiền yêu cầu bồi thường"
+                          type="number"
+                          {...field}
                         />
                       </FormControl>
                       <FormMessage />
@@ -267,10 +287,10 @@ export default function InsuranceClaimForm({
                     <FormItem>
                       <FormLabel>Mô Tả Chi Tiết</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          placeholder="Mô tả chi tiết về sự việc xảy ra..." 
-                          className="min-h-[100px]" 
-                          {...field} 
+                        <Textarea
+                          placeholder="Mô tả chi tiết về sự việc xảy ra..."
+                          className="min-h-[100px]"
+                          {...field}
                         />
                       </FormControl>
                       <FormMessage />
@@ -284,10 +304,10 @@ export default function InsuranceClaimForm({
                     <FormItem>
                       <FormLabel>Thông Tin Nhân Chứng (nếu có)</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          placeholder="Họ tên, SĐT, địa chỉ của nhân chứng (nếu có)..." 
-                          className="min-h-[80px]" 
-                          {...field} 
+                        <Textarea
+                          placeholder="Họ tên, SĐT, địa chỉ của nhân chứng (nếu có)..."
+                          className="min-h-[80px]"
+                          {...field}
                         />
                       </FormControl>
                       <FormMessage />
@@ -361,12 +381,12 @@ export default function InsuranceClaimForm({
                     </div>
                   </div>
                 )}
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex items-center space-x-2">
-                    <input 
-                      type="checkbox" 
-                      id="policeReport" 
+                    <input
+                      type="checkbox"
+                      id="policeReport"
                       className="rounded"
                       checked={form.watch('policeReport')}
                       onChange={(e) => form.setValue('policeReport', e.target.checked)}
@@ -374,9 +394,9 @@ export default function InsuranceClaimForm({
                     <Label htmlFor="policeReport">Có biên bản cơ quan chức năng</Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <input 
-                      type="checkbox" 
-                      id="damagePhotos" 
+                    <input
+                      type="checkbox"
+                      id="damagePhotos"
                       className="rounded"
                       checked={form.watch('damagePhotos') || uploadedFiles.some(f => f.type.startsWith('image/'))}
                       onChange={(e) => form.setValue('damagePhotos', e.target.checked)}
@@ -390,17 +410,17 @@ export default function InsuranceClaimForm({
 
           {/* Action Buttons */}
           <div className="flex justify-end space-x-4">
-            <Button 
-              type="button" 
-              variant="outline" 
+            <Button
+              type="button"
+              variant="outline"
               onClick={onCancel}
               disabled={isLoading}
             >
               Hủy
             </Button>
-            <Button 
-              type="submit" 
-              className="bg-[#E60012] hover:bg-[#B8000E]" 
+            <Button
+              type="submit"
+              className="bg-[#E60012] hover:bg-[#B8000E]"
               disabled={isLoading || isCalculating}
             >
               <Save className="mr-2 h-4 w-4" />

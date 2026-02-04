@@ -4,21 +4,37 @@ import prisma from "@/lib/prisma";
 export async function GET(req: NextRequest) {
     try {
         const { searchParams } = new URL(req.url);
-        
+        const forDropdown = searchParams.get('for_dropdown') === 'true';
+        const status = searchParams.get('status') || 'ACTIVE';
+
+        if (forDropdown) {
+            const bays = await prisma.service_bays.findMany({
+                where: { status },
+                select: { id: true, bay_name: true, status: true },
+                orderBy: { bay_name: 'asc' }
+            });
+            const dropdownData = bays.map(b => ({
+                id: b.id,
+                name: b.bay_name,
+                status: b.status
+            }));
+            return NextResponse.json({ data: dropdownData });
+        }
+
         const page = parseInt(searchParams.get('page') || '1');
         const limit = parseInt(searchParams.get('limit') || '10');
         const skip = (page - 1) * limit;
         const search = searchParams.get('search') || '';
-        
+
         const where: any = {};
-        
+
         if (search) {
             where.OR = [
                 { bay_name: { contains: search } },
                 { bay_code: { contains: search } }
             ];
         }
-        
+
         const [total, bays] = await Promise.all([
             prisma.service_bays.count({ where }),
             prisma.service_bays.findMany({
@@ -28,7 +44,7 @@ export async function GET(req: NextRequest) {
                 orderBy: { bay_name: 'asc' }
             })
         ]);
-        
+
         return NextResponse.json({
             data: bays,
             meta: {

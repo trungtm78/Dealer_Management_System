@@ -1,47 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { parsePaginationParams, buildPaginationMeta, buildSearchWhereClause, calculateSkip } from "@/lib/utils/pagination";
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const customerId = searchParams.get('customer_id')
-    const invoiceId = searchParams.get('invoice_id')
-    const paymentMethod = searchParams.get('payment_method')
+    const { page, limit, search, ...filters } = parsePaginationParams(searchParams, 5);
+    const skip = calculateSkip(page, limit);
 
-    const where: any = {}
-    if (customerId) {
-      where.customer_id = customerId
-    }
-    if (invoiceId) {
-      where.invoice_id = invoiceId
-    }
-    if (paymentMethod) {
-      where.payment_method = paymentMethod
+    const where: any = {
+      ...buildSearchWhereClause(search, ["payment_number", "reference_number"]),
+    };
+
+    if (filters.customer_id) {
+      where.customer_id = filters.customer_id
     }
 
-    const payments = await prisma.payment.findMany({
-      where,
-      include: {
-        Invoice: {
-          select: {
-            id: true,
-            invoice_number: true,
-            invoice_date: true,
-            total_amount: true
+    if (filters.invoice_id) {
+      where.invoice_id = filters.invoice_id
+    }
+
+    if (filters.payment_method) {
+      where.payment_method = filters.payment_method
+    }
+
+    const [total, payments] = await Promise.all([
+      prisma.payment.count({ where }),
+      prisma.payment.findMany({
+        where,
+        include: {
+          Invoice: {
+            select: {
+              id: true,
+              invoice_number: true,
+              invoice_date: true,
+              total_amount: true
+            }
+          },
+          User: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
           }
         },
-        User: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        }
-      },
-      orderBy: { payment_date: 'desc' }
-    })
+        skip,
+        take: limit,
+        orderBy: { payment_date: 'desc' }
+      })
+    ])
 
-    return NextResponse.json(payments)
+    return NextResponse.json({
+      data: payments,
+      meta: buildPaginationMeta(total, page, limit)
+    })
   } catch (error) {
     console.error('Failed to fetch payments:', error)
     return NextResponse.json(
@@ -115,7 +128,7 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    return NextResponse.json(payment)
+    return NextResponse.json(payment, { status: 201 })
   } catch (error) {
     console.error('Failed to create payment:', error)
     return NextResponse.json(

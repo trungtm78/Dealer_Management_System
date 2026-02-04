@@ -12,7 +12,8 @@ export const CRMService = {
         }
         const res = await fetch(url.toString(), { cache: 'no-store' });
         if (!res.ok) throw new Error("Failed to fetch customers");
-        return res.json();
+        const result = await res.json();
+        return result.data || [];
     },
 
     getCustomer: async (id: string): Promise<CustomerDTO | null> => {
@@ -87,7 +88,8 @@ export const CRMService = {
 
         const res = await fetch(url.toString(), { cache: 'no-store' });
         if (!res.ok) throw new Error("Failed to fetch leads");
-        return res.json();
+        const result = await res.json();
+        return result.data || [];
     },
 
     getLead: async (id: string): Promise<LeadDTO> => {

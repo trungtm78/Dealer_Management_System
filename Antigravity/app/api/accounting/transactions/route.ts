@@ -1,40 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { ValidationError } from '@/lib/validators'
+import { parsePaginationParams, buildPaginationMeta, buildSearchWhereClause, calculateSkip } from "@/lib/utils/pagination";
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const accountCode = searchParams.get('account_code')
-    const transactionDate = searchParams.get('transaction_date')
-    const referenceType = searchParams.get('reference_type')
+    const { page, limit, search, ...filters } = parsePaginationParams(searchParams, 5);
+    const skip = calculateSkip(page, limit);
 
-    const where: any = {}
-    if (accountCode) {
-      where.account_code = accountCode
-    }
-    if (transactionDate) {
-      where.transaction_date = new Date(transactionDate)
-    }
-    if (referenceType) {
-      where.reference_type = referenceType
+    const where: any = {
+      ...buildSearchWhereClause(search, ["description", "reference_id"]),
+    };
+
+    if (filters.account_code) {
+      where.account_code = filters.account_code
     }
 
-    const transactions = await prisma.transaction.findMany({
-      where,
-      include: {
-        User: {
-          select: {
-            id: true,
-            name: true,
-            email: true
+    if (filters.transaction_date) {
+      where.transaction_date = new Date(filters.transaction_date)
+    }
+
+    if (filters.reference_type) {
+      where.reference_type = filters.reference_type
+    }
+
+    const [total, transactions] = await Promise.all([
+      prisma.transaction.count({ where }),
+      prisma.transaction.findMany({
+        where,
+        include: {
+          User: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
           }
-        }
-      },
-      orderBy: { transaction_date: 'desc' }
-    })
+        },
+        skip,
+        take: limit,
+        orderBy: { transaction_date: 'desc' }
+      })
+    ])
 
-    return NextResponse.json(transactions)
+    return NextResponse.json({
+      data: transactions,
+      meta: buildPaginationMeta(total, page, limit)
+    })
   } catch (error) {
     console.error('Failed to fetch transactions:', error)
     return NextResponse.json(

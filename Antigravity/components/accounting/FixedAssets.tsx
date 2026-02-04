@@ -14,9 +14,13 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 
+import { SmartSelect } from "@/components/SmartSelect";
+import type { SelectDataSource } from "@/types/smart-select";
+
 export default function FixedAssets() {
     const [assets, setAssets] = useState<Asset[]>([]);
     const [open, setOpen] = useState(false);
+    const [selectedDeptId, setSelectedDeptId] = useState<number | null>(null);
     const [newItem, setNewItem] = useState<Partial<Asset>>({});
 
     useEffect(() => {
@@ -45,6 +49,17 @@ export default function FixedAssets() {
         setNewItem({});
     };
 
+    const departmentDataSource: SelectDataSource = {
+        search: async (req) => {
+            const res = await fetch('/api/shared/search/departments', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(req)
+            });
+            return res.json();
+        }
+    };
+
     return (
         <Card className="w-full">
             <CardHeader className="flex flex-row items-center justify-between">
@@ -71,14 +86,25 @@ export default function FixedAssets() {
                                 <Input id="cost" type="number" value={newItem.cost || ''} onChange={e => setNewItem({ ...newItem, cost: Number(e.target.value) })} />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="dept">Bộ Phận</Label>
-                                <Input id="dept" value={newItem.department || ''} onChange={e => setNewItem({ ...newItem, department: e.target.value })} />
+                                <SmartSelect
+                                    dataSource={departmentDataSource}
+                                    value={selectedDeptId}
+                                    onChange={(id, item) => {
+                                        setSelectedDeptId(id as number | null);
+                                        setNewItem({ ...newItem, department: item?.label || '' });
+                                    }}
+                                    label="Bộ Phận"
+                                    placeholder="Chọn bộ phận"
+                                    required={false}
+                                    context={{ onlyActive: true }}
+                                    className="w-full"
+                                />
                             </div>
                         </div>
                         <Button onClick={handleCreate}>Lưu Tài Sản</Button>
                     </DialogContent>
-                </Dialog>
-            </CardHeader>
+                </Dialog >
+            </CardHeader >
             <CardContent>
                 <Table>
                     <TableHeader>
@@ -107,6 +133,6 @@ export default function FixedAssets() {
                     </TableBody>
                 </Table>
             </CardContent>
-        </Card>
+        </Card >
     );
 }

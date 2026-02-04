@@ -24,14 +24,27 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SmartSelect } from "@/components/SmartSelect";
+import type { SelectDataSource } from "@/types/smart-select";
+
+// DataSource for VINs
+const vinDataSource: SelectDataSource = {
+    search: async (req) => {
+        const response = await fetch('/api/shared/search/vins', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(req)
+        });
+        return response.json();
+    }
+};
 
 export default function VinAllocation() {
     const [searchTerm, setSearchTerm] = useState("");
     const [allocations, setAllocations] = useState<Allocation[]>([]);
     const [selectedContract, setSelectedContract] = useState<string | null>(null);
     const [availableVins, setAvailableVins] = useState<InventoryItem[]>([]);
-    const [selectedVin, setSelectedVin] = useState("");
+    const [selectedVin, setSelectedVin] = useState<number | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
 
     const loadData = () => {
@@ -45,8 +58,8 @@ export default function VinAllocation() {
 
     const handleAssignVin = () => {
         if (!selectedContract || !selectedVin) return;
-        SalesService.assignVin(selectedContract, selectedVin);
-        SalesService.createPdsRequest(selectedVin, "Honda Vehicle", "White"); // Auto Request PDS
+        SalesService.assignVin(selectedContract, String(selectedVin));
+        SalesService.createPdsRequest(String(selectedVin), "Honda Vehicle", "White"); // Auto Request PDS
         toast.success("Đã gán VIN thành công và tạo yêu cầu PDS!");
         setIsDialogOpen(false);
         loadData();
@@ -118,18 +131,16 @@ export default function VinAllocation() {
                                                         <p className="font-semibold mb-2">Hợp đồng: {item.contractId}</p>
                                                         <p>Xe: {item.model} - {item.color}</p>
                                                     </div>
-                                                    <Select onValueChange={setSelectedVin}>
-                                                        <SelectTrigger className={!selectedVin ? "border-red-200" : ""}><SelectValue placeholder="Chọn số VIN phù hợp (*)" /></SelectTrigger>
-                                                        <SelectContent>
-                                                            {availableVins.length === 0 ? <div className="p-2 text-sm text-gray-500">Không có xe phù hợp</div> :
-                                                                availableVins
-                                                                    // .filter(v => v.model.includes(item.model.split(' ')[0])) // Filter logic mock (too loose currently)
-                                                                    .map(v => (
-                                                                        <SelectItem key={v.vin} value={v.vin}>{v.vin} - {v.color} ({v.days} ngày)</SelectItem>
-                                                                    ))
-                                                            }
-                                                        </SelectContent>
-                                                    </Select>
+                                                    <SmartSelect
+                                                        dataSource={vinDataSource}
+                                                        value={selectedVin}
+                                                        onChange={(id) => setSelectedVin(id as number | null)}
+                                                        label="Số VIN"
+                                                        placeholder="Chọn số VIN phù hợp (*)"
+                                                        required={true}
+                                                        context={{ onlyActive: true }}
+                                                        className="w-full"
+                                                    />
                                                     <Button
                                                         className="w-full bg-[#E60012]"
                                                         onClick={() => {

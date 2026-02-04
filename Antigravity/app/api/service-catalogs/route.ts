@@ -1,73 +1,61 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { parsePaginationParams, buildPaginationMeta, buildSearchWhereClause, calculateSkip } from "@/lib/utils/pagination";
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const search = searchParams.get('search')
-    const category = searchParams.get('category')?.split(',').filter(Boolean)
-    const requires_parts = searchParams.get('requires_parts')
-    const status = searchParams.get('status') || 'ACTIVE'
-    const min_price = searchParams.get('min_price')
-    const max_price = searchParams.get('max_price')
-    const min_duration = searchParams.get('min_duration')
-    const max_duration = searchParams.get('max_duration')
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100)
-    const sort = searchParams.get('sort') || 'created_at:desc'
+    const { page, limit, search, ...filters } = parsePaginationParams(searchParams, 5);
+    const skip = calculateSkip(page, limit);
 
-    const where: any = {}
-    if (search) {
-      where.OR = [
-        { service_name: { contains: search } },
-        { service_code: { contains: search } }
-      ]
-    }
-    if (category && category.length > 0) {
-      where.category = { in: category }
-    }
-    if (requires_parts !== null) {
-      where.requiresParts = requires_parts === '"ACTIVE"'
-    }
-    if (status !== 'ALL') {
-      where.status = status
-    }
-    if (min_price) {
-      where.basePrice = { gte: parseFloat(min_price) }
-    }
-    if (max_price) {
-      where.basePrice = { ...where.basePrice, lte: parseFloat(max_price) }
-    }
-    if (min_duration) {
-      where.durationHours = { gte: parseFloat(min_duration) }
-    }
-    if (max_duration) {
-      where.durationHours = { ...where.durationHours, lte: parseFloat(max_duration) }
+    const where: any = {
+      ...buildSearchWhereClause(search, ["service_name", "service_code"]),
+    };
+
+    if (filters.category) {
+      const categories = filters.category ? filters.category.split(',').filter(Boolean) : [];
+      if (categories.length > 0) {
+        where.category = { in: categories }
+      }
     }
 
-    const [sortField, sortOrder] = sort.split(':')
-    const orderBy = { [sortField]: sortOrder === 'desc' ? 'desc' : 'asc' }
+    if (filters.requires_parts !== undefined && filters.requires_parts !== null) {
+      where.requiresParts = filters.requires_parts === 'ACTIVE' || filters.requires_parts === 'true';
+    }
 
-    const skip = (page - 1) * limit
+    if (filters.status && filters.status !== 'ALL') {
+      where.status = filters.status
+    }
 
-    const [services, total] = await Promise.all([
+    if (filters.min_price) {
+      where.basePrice = { gte: parseFloat(filters.min_price) }
+    }
+
+    if (filters.max_price) {
+      where.basePrice = { ...where.basePrice, lte: parseFloat(filters.max_price) }
+    }
+
+    if (filters.min_duration) {
+      where.durationHours = { gte: parseFloat(filters.min_duration) }
+    }
+
+    if (filters.max_duration) {
+      where.durationHours = { ...where.durationHours, lte: parseFloat(filters.max_duration) }
+    }
+
+    const [total, services] = await Promise.all([
+      prisma.service_catalogs.count({ where }),
       prisma.service_catalogs.findMany({
         where,
-        orderBy,
         skip,
-        take: limit
-      }),
-      prisma.service_catalogs.count({ where })
+        take: limit,
+        orderBy: { created_at: 'desc' }
+      })
     ])
 
     return NextResponse.json({
       data: services,
-      meta: {
-        total,
-        page,
-        limit,
-        total_pages: Math.ceil(total / limit)
-      }
+      meta: buildPaginationMeta(total, page, limit)
     })
   } catch (error) {
     console.error('Failed to fetch service catalogs:', error)
@@ -81,20 +69,19 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { 
-      service_name, 
-      category, 
+    const {
+      service_name,
+      category,
       duration_hours = 1.0,
-      base_price, 
+      base_price,
       requires_parts = "INACTIVE"
     } = body
 
-    // Check for duplicate service_name
     const existingService = await prisma.service_catalogs.findFirst({
-      where: { 
-        service_name: { 
+      where: {
+        service_name: {
           equals: service_name
-        } 
+        }
       }
     })
 
@@ -105,7 +92,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Generate service code
     const count = await prisma.service_catalogs.count()
     const serviceCode = `SVC/2026/${String(count + 1).padStart(3, '0')}`
 

@@ -4,12 +4,27 @@ import prisma from '@/lib/prisma'
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
+    const forDropdown = searchParams.get('for_dropdown') === 'true';
+    const status = searchParams.get('status') || 'ACTIVE';
+
+    if (forDropdown) {
+      const partCategories = await prisma.part_categories.findMany({
+        where: { status },
+        select: { id: true, category_name: true, status: true },
+        orderBy: { category_name: 'asc' }
+      });
+      const dropdownData = partCategories.map(c => ({
+        id: c.id,
+        name: c.category_name,
+        status: c.status
+      }));
+      return NextResponse.json({ data: dropdownData });
+    }
     
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
     const skip = (page - 1) * limit
     const search = searchParams.get('search') || ''
-    const status = searchParams.get('status') || ''
     const includeChildren = searchParams.get('include_children') === '"ACTIVE"'
 
     const where: any = {}

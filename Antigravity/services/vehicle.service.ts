@@ -13,7 +13,8 @@ export const VehicleService = {
         }
         const res = await fetch(url.toString(), { cache: 'no-store' });
         if (!res.ok) throw new Error("Failed to fetch vehicles");
-        return res.json();
+        const result = await res.json();
+        return result.data || [];
     },
 
     getVehicle: async (id: string): Promise<VehicleDTO | null> => {

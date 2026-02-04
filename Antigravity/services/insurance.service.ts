@@ -7,7 +7,8 @@ export const InsuranceService = {
     getContracts: async (): Promise<InsuranceContractDTO[]> => {
         const res = await fetch(API_BASE_URL, { cache: 'no-store' });
         if (!res.ok) throw new Error("Failed to fetch contracts");
-        return res.json();
+        const result = await res.json();
+        return result.data || [];
     },
 
     getContract: async (id: string): Promise<InsuranceContractDTO> => {

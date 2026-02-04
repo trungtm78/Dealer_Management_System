@@ -14,10 +14,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from "sonner";
 import { CustomerSearch } from "@/components/common/CustomerSearch";
 import { createTestDrive, getTestDrives } from '@/actions/sales/test-drives';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SmartSelect } from "@/components/SmartSelect";
+import type { SelectDataSource } from "@/types/smart-select";
 
 // UI Interface matching the component needs, mapped from DB
 interface TestDriveUI {
@@ -47,9 +49,21 @@ export default function TestDriveSchedule() {
     const [bookCustomer, setBookCustomer] = useState('');
     const [bookPhone, setBookPhone] = useState('');
     const [bookModel, setBookModel] = useState('Honda CR-V L');
+    const [selectedModelId, setSelectedModelId] = useState<number | null>(null);
     const [bookTime, setBookTime] = useState('09:00');
     const [bookDate, setBookDate] = useState(new Date().toISOString().split('T')[0]); // Default today YYYY-MM-DD
     const [bookNotes, setBookNotes] = useState('');
+
+    const vehicleModelDataSource: SelectDataSource = {
+        search: async (req) => {
+            const res = await fetch('/api/shared/search/vehicle-models', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(req)
+            });
+            return res.json();
+        }
+    };
 
     // Errors
     const [errors, setErrors] = useState<{ customer?: string, phone?: string }>({});
@@ -116,6 +130,7 @@ export default function TestDriveSchedule() {
                 setBookCustomer('');
                 setBookPhone('');
                 setBookNotes('');
+                setSelectedModelId(null);
             } else {
                 toast.error(result.error);
             }
@@ -286,16 +301,19 @@ export default function TestDriveSchedule() {
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Dòng xe</Label>
-                                <Select onValueChange={setBookModel} defaultValue={bookModel}>
-                                    <SelectTrigger><SelectValue placeholder="Chọn xe" /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Honda CR-V L">Honda CR-V L</SelectItem>
-                                        <SelectItem value="Honda City RS">Honda City RS</SelectItem>
-                                        <SelectItem value="Honda Civic RS">Honda Civic RS</SelectItem>
-                                        <SelectItem value="Honda BR-V G">Honda BR-V G</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <SmartSelect
+                                    dataSource={vehicleModelDataSource}
+                                    value={selectedModelId}
+                                    onChange={(id, item) => {
+                                        setSelectedModelId(id as number | null);
+                                        setBookModel(item?.label || "");
+                                    }}
+                                    label="Dòng xe"
+                                    placeholder="Chọn xe"
+                                    required={false}
+                                    context={{ onlyActive: true }}
+                                    className="w-full"
+                                />
                             </div>
                             <div className="space-y-2">
                                 <Label>Ngày</Label>

@@ -1,0 +1,47 @@
+# UAT Specification: Smart Search Component (Global)
+
+**Project**: Honda SPICE ERP System
+**Module**: Master Data Management (System-Wide)
+**Run ID**: UAT-20260204-MD-01
+**Related CR**: CR-20260204-001
+**Date**: 2026-02-04
+**Author**: Antigravity - UAT Design Authority
+
+## 1. Introduction
+This UAT plan focuses on verifying the new "Smart Search" Standard (FR-SYS-001) which applies to all Foreign Key dropdowns in the system. The verification will focus on the standardized `SmartSelect` component behavior, search logic, and creation flow using "Customer" and "Product" entities as representative test subjects.
+
+## 2. Test Scenarios
+
+### 2.1 Basic Interaction & UI
+| TC ID | Scenario | Pre-conditions | Test Steps | Expected Result |
+|-------|----------|----------------|------------|-----------------|
+| **TC-SYS-001** | Open Dropdown & Load Defaults | User is on any form with a Smart Select input (e.g. Quotation > Customer) | 1. Click on the Smart Select input. | - Input receives focus.<br>- Dropdown opens immediately.<br>- Top N (default 20) items are loaded and displayed.<br>- "Loading" skeleton shown briefly while fetching. |
+| **TC-SYS-002** | Keyboard Navigation | Dropdown is open with items loaded. | 1. Press Arrow Down.<br>2. Press Arrow Up.<br>3. Press Enter. | - Arrow Down: Moves highlight to next item.<br>- Arrow Up: Moves highlight to previous item.<br>- Enter: Selects the highlighted item and closes dropdown. |
+| **TC-SYS-003** | Close Dropdown | Dropdown is open. | 1. Press Esc key OR Click outside. | Dropdown closes. |
+
+### 2.2 Search Logic
+| TC ID | Scenario | Pre-conditions | Test Steps | Expected Result |
+|-------|----------|----------------|------------|-----------------|
+| **TC-SYS-004** | Real-time Search by Name | Customer "Nguyen Van A" exists. | 1. Type "nguyen".<br>2. Wait 200ms. | - System triggers search request.<br>- Result list updates to show "Nguyen Van A" and other matches. |
+| **TC-SYS-005** | Search by Secondary Fields (Phone/Email) | Customer with phone "0909123456" exists. | 1. Type "0909". | - Result list shows the customer with matching phone number.<br>- Subtitle highlights the matching phone number (optional but good UX). |
+| **TC-SYS-006** | Search by Code | Product "HONDA-2024" exists. | 1. Type "2024". | - Result list shows the product with matching code. |
+| **TC-SYS-007** | No Results State | No customer matches "XYZ123". | 1. Type "XYZ123". | - Dropdown shows "No results found".<br>- If create enabled: Shows "Create 'XYZ123'". |
+
+### 2.3 Creation Flow
+| TC ID | Scenario | Pre-conditions | Test Steps | Expected Result |
+|-------|----------|----------------|------------|-----------------|
+| **TC-SYS-008** | Create In-Place (Create Enabled) | User has CREATE permission. `createEnabled=true`. | 1. Type "New Customer B".<br>2. Verify no results.<br>3. Click "Create 'New Customer B'" (or press Enter). | - System calls create API.<br>- New item is created.<br>- Component auto-selects "New Customer B".<br>- Dropdown closes.<br>- Form value is updated. |
+| **TC-SYS-009** | Create Disabled context | `createEnabled=false`. | 1. Type "Unknown Item". | - Shows "No results found".<br>- DOES NOT show "Create" option. |
+
+### 2.4 Advanced Behavior
+| TC ID | Scenario | Pre-conditions | Test Steps | Expected Result |
+|-------|----------|----------------|------------|-----------------|
+| **TC-SYS-010** | Infinite Scroll | Entity has > 50 records. | 1. Scroll to bottom of dropdown list. | - Loading indicator appears at bottom.<br>- Next page of results is appended to list. |
+| **TC-SYS-011** | Context Filtering (Company) | User belongs to Company A. Customer X belongs to Company B. | 1. Search for Customer X. | - Customer X does NOT appear in results (due to `companyId` context). |
+| **TC-SYS-012** | Race Condition Handling | Slow network simulated. | 1. Type "A" (Request 1).<br>2. Immediately type "B" (Request 2).<br>3. Ensure Request 1 finishes AFTER Request 2. | - UI must display results for "AB" (Request 2).<br>- Results for "A" (Request 1) must be ignored. |
+
+## 3. Test Data
+- **Users**: Admin User (all permissions), Sales User (restricted Create).
+- **Entities**: 
+  - 50+ Customers (various names/phones).
+  - 50+ Products (various codes).

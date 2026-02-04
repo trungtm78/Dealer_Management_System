@@ -1,22 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { parsePaginationParams, buildPaginationMeta, buildSearchWhereClause, calculateSkip } from "@/lib/utils/pagination";
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const category = searchParams.get('category')
+    const { page, limit, search, ...filters } = parsePaginationParams(searchParams, 5);
+    const skip = calculateSkip(page, limit);
 
-    const where: any = {}
-    if (category) {
-      where.category = category
+    const where: any = {
+      ...buildSearchWhereClause(search, ["rule_name", "rule_code"]),
+    };
+
+    if (filters.category) {
+      where.category = filters.category
     }
 
-    const rules = await prisma.scoring_rules.findMany({
-      where,
-      orderBy: { created_at: 'desc' }
-    })
+    if (filters.status) {
+      where.status = filters.status
+    }
 
-    return NextResponse.json(rules)
+    const [total, rules] = await Promise.all([
+      prisma.scoring_rules.count({ where }),
+      prisma.scoring_rules.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { created_at: 'desc' }
+      })
+    ])
+
+    return NextResponse.json({
+      data: rules,
+      meta: buildPaginationMeta(total, page, limit)
+    })
   } catch (error) {
     console.error('Failed to fetch scoring rules:', error)
     return NextResponse.json(
@@ -42,7 +59,7 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    return NextResponse.json(rule)
+    return NextResponse.json(rule, { status: 201 })
   } catch (error) {
     console.error('Failed to create scoring rule:', error)
     return NextResponse.json(

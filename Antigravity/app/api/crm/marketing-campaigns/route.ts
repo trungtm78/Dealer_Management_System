@@ -1,31 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { parsePaginationParams, buildPaginationMeta, buildSearchWhereClause, calculateSkip } from "@/lib/utils/pagination";
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const status = searchParams.get('status')
+    const { page, limit, search, ...filters } = parsePaginationParams(searchParams, 5);
+    const skip = calculateSkip(page, limit);
 
-    const where: any = {}
-    if (status) {
-      where.status = status
+    const where: any = {
+      ...buildSearchWhereClause(search, ["name", "description"]),
+    };
+
+    if (filters.status) {
+      where.status = filters.status
     }
 
-    const campaigns = await prisma.marketingCampaign.findMany({
-      where,
-      include: {
-        User: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        }
-      },
-      orderBy: { created_at: 'desc' }
-    })
+    if (filters.type) {
+      where.type = filters.type
+    }
 
-    return NextResponse.json(campaigns)
+    const [total, campaigns] = await Promise.all([
+      prisma.marketingCampaign.count({ where }),
+      prisma.marketingCampaign.findMany({
+        where,
+        include: {
+          User: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
+          }
+        },
+        skip,
+        take: limit,
+        orderBy: { created_at: 'desc' }
+      })
+    ])
+
+    return NextResponse.json({
+      data: campaigns,
+      meta: buildPaginationMeta(total, page, limit)
+    })
   } catch (error) {
     console.error('Failed to fetch marketing campaigns:', error)
     return NextResponse.json(
@@ -63,7 +80,7 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    return NextResponse.json(campaign)
+    return NextResponse.json(campaign, { status: 201 })
   } catch (error) {
     console.error('Failed to create marketing campaign:', error)
     return NextResponse.json(

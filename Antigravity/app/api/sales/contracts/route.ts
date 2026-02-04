@@ -1,49 +1,62 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { parsePaginationParams, buildPaginationMeta, buildSearchWhereClause, calculateSkip } from "@/lib/utils/pagination";
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const status = searchParams.get('status')
+    const { page, limit, search, ...filters } = parsePaginationParams(searchParams, 5);
+    const skip = calculateSkip(page, limit);
 
-    const where: any = {}
-    if (status) {
-      where.status = status
+    const where: any = {
+      ...buildSearchWhereClause(search, ["contract_number"]),
+    };
+
+    if (filters.status) {
+      where.status = filters.status
     }
 
-    const contracts = await prisma.contract.findMany({
-      where,
-      include: {
-        Customer: {
-          select: {
-            id: true,
-            name: true,
-            phone: true,
-            email: true
+    const [total, contracts] = await Promise.all([
+      prisma.contract.count({ where }),
+      prisma.contract.findMany({
+        where,
+        include: {
+          Customer: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+              email: true
+            }
+          },
+          Quotation: {
+            select: {
+              id: true,
+              quote_number: true,
+              model: true,
+              version: true,
+              color: true,
+              total_price: true
+            }
+          },
+          User: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
           }
         },
-        Quotation: {
-          select: {
-            id: true,
-            quote_number: true,
-            model: true,
-            version: true,
-            color: true,
-            total_price: true
-          }
-        },
-        User: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        }
-      },
-      orderBy: { contract_date: 'desc' }
-    })
+        skip,
+        take: limit,
+        orderBy: { contract_date: 'desc' }
+      })
+    ])
 
-    return NextResponse.json(contracts)
+    return NextResponse.json({
+      data: contracts,
+      meta: buildPaginationMeta(total, page, limit)
+    })
   } catch (error) {
     console.error('Failed to fetch contracts:', error)
     return NextResponse.json(
@@ -130,7 +143,7 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    return NextResponse.json(contract)
+    return NextResponse.json(contract, { status: 201 })
   } catch (error) {
     console.error('Failed to create contract:', error)
     return NextResponse.json(

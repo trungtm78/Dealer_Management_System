@@ -38,6 +38,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Checkbox } from "@/components/ui/checkbox"
+import { SmartSelect } from "@/components/SmartSelect";
+import type { SelectDataSource } from "@/types/smart-select";
 import { toast } from "sonner"
 import { validateLeadForm } from "@/lib/utils/validations"
 import { CRMService } from "@/services/crm.service"
@@ -50,6 +52,7 @@ interface CreateLeadDialogProps {
 export function CreateLeadDialog({ onLeadCreated }: CreateLeadDialogProps) {
     const [open, setOpen] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
+    const [vehicleModelId, setVehicleModelId] = useState<number | null>(null)
 
     // Form State
     const [formData, setFormData] = useState({
@@ -99,7 +102,7 @@ export function CreateLeadDialog({ onLeadCreated }: CreateLeadDialogProps) {
 
         setIsLoading(true)
 
-const result = await CRMService.createLead({
+        const result = await CRMService.createLead({
             name: formData.name,
             phone: formData.phone,
             email: formData.email,
@@ -116,7 +119,7 @@ const result = await CRMService.createLead({
             toast.success("Đã tạo Lead mới thành công!");
             setOpen(false);
 
-// Reset form
+            // Reset form
             setFormData({
                 name: "", phone: "", email: "", address: "", source: "WALK_IN",
                 model: "", version: "", color: "", testDrive: false, testDriveDate: "",
@@ -134,6 +137,17 @@ const result = await CRMService.createLead({
 
         setIsLoading(false)
     }
+
+    const vehicleModelDataSource: SelectDataSource = {
+        search: async (req) => {
+            const res = await fetch('/api/shared/search/vehicle-models', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(req)
+            });
+            return res.json();
+        }
+    };
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -221,22 +235,23 @@ const result = await CRMService.createLead({
                     <TabsContent value="vehicle" className="space-y-4 py-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label className="flex items-center gap-2"><Car className="w-4 h-4" /> Dòng Xe Quan Tâm <span className="text-red-500">(*)</span></Label>
-                                <Select
-                                    value={formData.model}
-                                    onValueChange={(val) => setFormData({ ...formData, model: val })}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Chọn dòng xe" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="city">Honda City</SelectItem>
-                                        <SelectItem value="crv">Honda CR-V</SelectItem>
-                                        <SelectItem value="hrv">Honda HR-V</SelectItem>
-                                        <SelectItem value="civic">Honda Civic</SelectItem>
-                                        <SelectItem value="accord">Honda Accord</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <SmartSelect
+                                    dataSource={vehicleModelDataSource}
+                                    value={vehicleModelId}
+                                    onChange={(id, item) => {
+                                        setVehicleModelId(id as number | null);
+                                        if (item) {
+                                            setFormData({ ...formData, model: item.label || "" });
+                                        } else {
+                                            setFormData({ ...formData, model: "" });
+                                        }
+                                    }}
+                                    label="Dòng xe"
+                                    placeholder="Chọn dòng xe..."
+                                    required
+                                    context={{ onlyActive: true }}
+                                    className="w-full"
+                                />
                             </div>
                             <div className="space-y-2">
                                 <Label>Phiên Bản (Trim)</Label>

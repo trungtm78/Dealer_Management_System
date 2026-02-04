@@ -149,6 +149,7 @@ export function CustomerForm({ initialData }: CustomerFormProps) {
                                         <div className="space-y-1 w-full max-w-lg">
                                             <Label className="uppercase text-xs text-gray-500 font-bold">Tên khách hàng</Label>
                                             <Input
+                                                name="name"
                                                 value={formData.name}
                                                 onChange={e => handleChange('name', e.target.value)}
                                                 className="text-lg font-semibold h-10"
@@ -156,6 +157,7 @@ export function CustomerForm({ initialData }: CustomerFormProps) {
                                             />
                                         </div>
                                         <RadioGroup
+                                            name="type"
                                             value={formData.type}
                                             onValueChange={(val) => handleChange('type', val)}
                                             className="flex gap-4"
@@ -175,13 +177,13 @@ export function CustomerForm({ initialData }: CustomerFormProps) {
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-1">
                                                 <Label className="text-xs">Mã Số Thuế (VAT)</Label>
-                                                <Input value={formData.vat} onChange={e => handleChange('vat', e.target.value)} placeholder="010..." />
+                                                <Input name="vat" value={formData.vat} onChange={e => handleChange('vat', e.target.value)} placeholder="010..." />
                                             </div>
                                             <div className="space-y-1">
                                                 <Label className="text-xs">Website</Label>
                                                 <div className="relative">
                                                     <Globe className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
-                                                    <Input className="pl-8" value={formData.website} onChange={e => handleChange('website', e.target.value)} placeholder="www.example.com" />
+                                                    <Input name="website" className="pl-8" value={formData.website} onChange={e => handleChange('website', e.target.value)} placeholder="www.example.com" />
                                                 </div>
                                             </div>
                                         </div>
@@ -212,17 +214,17 @@ export function CustomerForm({ initialData }: CustomerFormProps) {
                                                 <div className="flex items-center gap-2 text-gray-800 font-medium">
                                                     <MapPin className="w-4 h-4" /> Địa chỉ
                                                 </div>
-                                                <div className="space-y-3">
-                                                    <Input value={formData.street} onChange={e => handleChange('street', e.target.value)} placeholder="Số nhà, đường phố..." />
-                                                    <div className="grid grid-cols-2 gap-2">
-                                                        <Input value={formData.ward} onChange={e => handleChange('ward', e.target.value)} placeholder="Phường / Xã" />
-                                                        <Input value={formData.district} onChange={e => handleChange('district', e.target.value)} placeholder="Quận / Huyện" />
+                                                    <div className="space-y-3">
+                                                        <Input name="street" value={formData.street} onChange={e => handleChange('street', e.target.value)} placeholder="Số nhà, đường phố..." />
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            <Input name="ward" value={formData.ward} onChange={e => handleChange('ward', e.target.value)} placeholder="Phường / Xã" />
+                                                            <Input name="district" value={formData.district} onChange={e => handleChange('district', e.target.value)} placeholder="Quận / Huyện" />
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            <Input name="city" value={formData.city} onChange={e => handleChange('city', e.target.value)} placeholder="Tỉnh / Thành phố" />
+                                                            <Input name="country" value={formData.country} onChange={e => handleChange('country', e.target.value)} placeholder="Quốc gia" />
+                                                        </div>
                                                     </div>
-                                                    <div className="grid grid-cols-2 gap-2">
-                                                        <Input value={formData.city} onChange={e => handleChange('city', e.target.value)} placeholder="Tỉnh / Thành phố" />
-                                                        <Input value={formData.country} onChange={e => handleChange('country', e.target.value)} placeholder="Quốc gia" />
-                                                    </div>
-                                                </div>
                                             </div>
 
                                             {/* Right Column: Contact */}
@@ -230,24 +232,25 @@ export function CustomerForm({ initialData }: CustomerFormProps) {
                                                 <div className="flex items-center gap-2 text-gray-800 font-medium">
                                                     <Phone className="w-4 h-4" /> Liên hệ
                                                 </div>
-                                                <div className="space-y-3">
+                                        <div className="space-y-3">
                                                     <div>
                                                         <Label className="text-xs">Điện thoại</Label>
-                                                        <Input value={formData.phone} onChange={e => handleChange('phone', e.target.value)} />
+                                                        <Input name="phone" value={formData.phone} onChange={e => handleChange('phone', e.target.value)} />
                                                     </div>
                                                     <div>
                                                         <Label className="text-xs">Di động</Label>
-                                                        <Input value={formData.mobile} onChange={e => handleChange('mobile', e.target.value)} />
+                                                        <Input name="mobile" value={formData.mobile} onChange={e => handleChange('mobile', e.target.value)} />
                                                     </div>
                                                     <div>
                                                         <Label className="text-xs">Email</Label>
-                                                        <Input value={formData.email} onChange={e => handleChange('email', e.target.value)} placeholder="name@example.com" />
+                                                        <Input name="email" value={formData.email} onChange={e => handleChange('email', e.target.value)} placeholder="name@example.com" />
                                                     </div>
                                                     <div>
                                                         <Label className="text-xs">Tags</Label>
                                                         <div className="flex items-center gap-2">
                                                             <Tag className="w-4 h-4 text-gray-400" />
                                                             <Input
+                                                                name="tags"
                                                                 placeholder="Nhập tag..."
                                                                 value={formData.tags.join(', ')}
                                                                 onChange={e => handleChange('tags', e.target.value.split(',').map(s => s.trim()))}
@@ -267,6 +270,7 @@ export function CustomerForm({ initialData }: CustomerFormProps) {
 
                                     <TabsContent value="notes" className="m-0">
                                         <Textarea
+                                            name="notes"
                                             className="h-64"
                                             placeholder="Ghi chú nội bộ về khách hàng này..."
                                             value={formData.notes}
