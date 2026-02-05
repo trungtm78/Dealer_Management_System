@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Wrench, Settings, Plus, User } from "lucide-react";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
-import { CustomerSearch } from "@/components/common/CustomerSearch";
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SmartSelect } from "@/components/SmartSelect";
 import type { SelectDataSource } from "@/types/smart-select";
@@ -56,6 +56,17 @@ export default function RepairOrderList() {
     const vehicleModelDataSource: SelectDataSource = {
         search: async (req) => {
             const res = await fetch('/api/shared/search/vehicle-models', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(req)
+            });
+            return res.json();
+        }
+    };
+
+    const customerDataSource: SelectDataSource = {
+        search: async (req) => {
+            const res = await fetch('/api/shared/search/customers', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(req)
@@ -120,16 +131,22 @@ export default function RepairOrderList() {
         }
 
         try {
+            // Get current user ID for advisor (temporary solution - should get from auth)
+            const advisorId = "usr-admin"; // TODO: Get from auth session
+
             const result = await ServiceService.createRepairOrder({
                 customerId: newRO.customerId,
+                advisorId: advisorId,
                 vehicleInfo: { plateNumber: newRO.plateNumber, model: newRO.model },
                 symptoms: newRO.symptoms,
+                mileage: newRO.mileage
             });
 
             if (result.success) {
                 toast.success("Tạo lệnh sửa chữa thành công");
                 setIsCreateOpen(false);
                 setNewRO({ plateNumber: "", model: "", customerId: "", symptoms: "", mileage: 0, advisor: "" });
+                setSelectedVehicleModelId(null);
                 loadData();
             } else {
                 toast.error(result.error || "Tạo RO thất bại");
@@ -184,12 +201,17 @@ export default function RepairOrderList() {
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="customer">Khách Hàng (*)</Label>
-                                <CustomerSearch
-                                    onSelect={(c) => setNewRO({ ...newRO, customerId: c.id })}
-                                    placeholder="Tìm khách hàng..."
+                                <SmartSelect
+                                    dataSource={customerDataSource}
+                                    value={newRO.customerId}
+                                    onChange={(id, item) => {
+                                        setNewRO({ ...newRO, customerId: id as string });
+                                    }}
+                                    label="Khách hàng"
+                                    placeholder="Chọn khách hàng..."
+                                    required
+                                    className="w-full"
                                 />
-                                {newRO.customerId && <p className="text-xs text-green-600 mt-1">Đã chọn ID: {newRO.customerId}</p>}
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="symptoms">Tình Trạng / Yêu Cầu (*)</Label>

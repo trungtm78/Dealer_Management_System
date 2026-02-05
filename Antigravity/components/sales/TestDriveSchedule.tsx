@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from "sonner";
-import { CustomerSearch } from "@/components/common/CustomerSearch";
+
 import { createTestDrive, getTestDrives } from '@/actions/sales/test-drives';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SmartSelect } from "@/components/SmartSelect";
@@ -53,6 +53,17 @@ export default function TestDriveSchedule() {
     const [bookTime, setBookTime] = useState('09:00');
     const [bookDate, setBookDate] = useState(new Date().toISOString().split('T')[0]); // Default today YYYY-MM-DD
     const [bookNotes, setBookNotes] = useState('');
+
+    const customerDataSource: SelectDataSource = {
+        search: async (req) => {
+            const res = await fetch('/api/shared/search/customers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(req)
+            });
+            return res.json();
+        }
+    };
 
     const vehicleModelDataSource: SelectDataSource = {
         search: async (req) => {
@@ -275,16 +286,18 @@ export default function TestDriveSchedule() {
                     <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Khách hàng <span className="text-red-500">(*)</span></Label>
-                                <CustomerSearch
-                                    onSelect={(c) => {
-                                        setBookCustomerId(c.id);
-                                        setBookCustomer(c.name);
-                                        if (c.phone) setBookPhone(c.phone);
-                                        setErrors({ ...errors, customer: undefined, phone: undefined });
+                                <SmartSelect
+                                    dataSource={customerDataSource}
+                                    value={newSchedule.customerId}
+                                    onChange={(id, item) => {
+                                        setNewSchedule({ ...newSchedule, customerId: id as string });
+                                        setCustomerName(item?.label || '');
+                                        if (item?.meta?.phone) setCustomerPhone(item.meta.phone);
                                     }}
-                                    placeholder="Tìm khách hàng..."
-                                    className={errors.customer ? "border-red-500" : ""}
+                                    label="Khách hàng"
+                                    placeholder="Chọn khách hàng..."
+                                    required
+                                    className={`w-full ${errors.customer ? "border-red-500" : ""}`}
                                 />
                                 {errors.customer && <p className="text-xs text-red-500">{errors.customer}</p>}
                             </div>

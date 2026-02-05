@@ -13,7 +13,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { SmartSelect } from "@/components/SmartSelect";
 import type { SelectDataSource } from "@/types/smart-select";
 import { toast } from "sonner";
-import { CustomerSearch } from "@/components/common/CustomerSearch";
 import { PartDTO } from "@/lib/types/inventory";
 
 interface SelectedPart extends PartDTO {
@@ -46,6 +45,17 @@ export default function ServiceQuoteCreate() {
     const vehicleModelDataSource: SelectDataSource = {
         search: async (req) => {
             const res = await fetch('/api/shared/search/vehicle-models', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(req)
+            });
+            return res.json();
+        }
+    };
+
+    const customerDataSource: SelectDataSource = {
+        search: async (req) => {
+            const res = await fetch('/api/shared/search/customers', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(req)
@@ -189,14 +199,17 @@ export default function ServiceQuoteCreate() {
                             <h3 className="text-lg font-semibold mb-4">Thông tin Khách hàng</h3>
                             <div className="space-y-4">
                                 <div>
-                                    <Label>Khách hàng *</Label>
-                                    <CustomerSearch
-                                        onSelect={(c) => {
-                                            setCustomerId(c.id);
-                                            setCustomerName(c.name);
-                                            if (c.phone) setPhone(c.phone);
+                                    <SmartSelect
+                                        dataSource={customerDataSource}
+                                        value={customerId}
+                                        onChange={(id, item) => {
+                                            setCustomerId(id as string | undefined);
+                                            setCustomerName(item?.label || '');
+                                            if (item?.meta?.phone) setPhone(item.meta.phone);
                                         }}
-                                        placeholder="Tìm khách hàng..."
+                                        label="Khách hàng"
+                                        placeholder="Chọn khách hàng..."
+                                        required
                                         className="w-full"
                                     />
                                 </div>

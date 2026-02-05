@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { CustomerSearch } from "@/components/common/CustomerSearch";
+import { SmartSelect } from "@/components/SmartSelect";
+import type { SelectDataSource } from "@/types/smart-select";
 
 interface Ticket {
     id: string;
@@ -34,14 +35,25 @@ interface Ticket {
 
 // Helper Component for creating tickets
 function CreateTicketForm({ onCreate }: { onCreate: (ticket: Ticket) => void }) {
-    const [name, setName] = useState("");
+    const [customerId, setCustomerId] = useState<string>('');
+
+    const customerDataSource: SelectDataSource = {
+        search: async (req) => {
+            const res = await fetch('/api/shared/search/customers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(req)
+            });
+            return res.json();
+        }
+    };
     const [phone, setPhone] = useState("");
     const [issue, setIssue] = useState("");
     const [priority, setPriority] = useState<Ticket['priority']>("medium");
     const [description, setDescription] = useState("");
 
     const handleSubmit = () => {
-        if (!name || !phone || !issue) {
+        if (!customerId || !phone || !issue) {
             toast.error("Vui lòng điền các trường bắt buộc");
             return;
         }
@@ -49,8 +61,8 @@ function CreateTicketForm({ onCreate }: { onCreate: (ticket: Ticket) => void }) 
         const newTicket: Ticket = {
             id: Math.random().toString(36).substr(2, 9),
             ticketNumber: `TICKET-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000)}`,
-            customerId: `CUS-${Math.floor(Math.random() * 1000)}`,
-            customerName: name,
+            customerId: customerId,
+            customerName: "Customer Name Placeholder", // This should be fetched based on customerId
             phone,
             issue,
             description,
@@ -69,14 +81,21 @@ function CreateTicketForm({ onCreate }: { onCreate: (ticket: Ticket) => void }) 
         <div className="py-4 space-y-4">
             <div className="space-y-2">
                 <Label>Khách hàng <span className="text-red-500">(*)</span></Label>
-                <div className="flex gap-2">
-                    <CustomerSearch
-                        onSelect={(c) => {
-                            setName(c.name);
-                            if (c.phone) setPhone(c.phone);
-                        }}
-                        className="w-full"
-                    />
+                <div className="space-y-4">
+                    <div>
+                        <SmartSelect
+                            dataSource={customerDataSource}
+                            value={customerId}
+                            onChange={(id, item) => {
+                                setCustomerId(id as string);
+                                if (item && item.phone) setPhone(item.phone);
+                            }}
+                            label="Khách hàng"
+                            placeholder="Chọn khách hàng..."
+                            required
+                            className="w-full"
+                        />
+                    </div>
                 </div>
             </div>
             <div className="space-y-2">
