@@ -425,43 +425,37 @@ export const menuGroups: MenuGroup[] = [
             },
         ],
     },
-     {
-         title: "Master Data",
-         icon: Database,
-         subGroups: [
-             {
-                 title: "Nhân Sự",
-                 items: [
-                     {
-                         id: "employee-management",
-                         label: "Nhân Viên",
-                         icon: Users,
-                         href: "/master-data/employees"
-                     },
-                 ]
-             },
-         ],
-         items: [
-             {
-                 id: "departments",
-                 label: "Departments",
-                 icon: Users,
-                 href: "/master-data/departments"
-             },
-             {
-                 id: "positions",
-                 label: "Positions",
-                 icon: Users,
-                 href: "/master-data/positions"
-             },
-             {
-                 id: "levels",
-                 label: "Levels",
-                 icon: Users,
-                 href: "/master-data/levels"
-             },
-         ],
-     },
+    {
+        title: "Master Data",
+        icon: Database,
+        subGroups: [
+            {
+                title: "Nhân Sự",
+                items: [
+                    {
+                        id: "employee-management",
+                        label: "Nhân Viên",
+                        icon: Users,
+                        href: "/master-data/employees"
+                    },
+                    {
+                        id: "departments",
+                        label: "Phòng Ban",
+                        icon: Building,
+                        href: "/master-data/departments"
+                    },
+                    {
+                        id: "positions",
+                        label: "Chức Vụ",
+                        icon: UserCog,
+                        href: "/master-data/positions"
+                    },
+                    {
+                        id: "levels",
+                        label: "Cấp Bậc",
+                        icon: Award,
+                        href: "/master-data/levels"
+                    },
                 ]
             },
             {

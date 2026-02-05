@@ -10,8 +10,7 @@ export async function POST(req: NextRequest) {
 
         const where: any = {
             ...(filter?.excludedIds && { id: { notIn: filter.excludedIds } }),
-            ...(context?.onlyActive !== false && { status: "ACTIVE" }),
-            deleted_at: null
+            ...(context?.onlyActive !== false && { status: "ACTIVE" })
         };
 
         if (q && q.trim()) {

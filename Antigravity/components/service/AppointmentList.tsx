@@ -69,29 +69,28 @@ export default function AppointmentList() {
         }
     };
 
-    const handleAddAppointment = async () => {
+    const handleCreate = async () => {
         // Validation
-        if (!newAppointment.customerId || !newAppointment.date) {
+        if (!formData.customerId || !formData.date) {
             toast.error("Vui lòng nhập đầy đủ các trường bắt buộc (*)");
             return;
         }
 
         try {
             const result = await ServiceService.createAppointment({
-                customerId: newAppointment.customerId,
-                vehicleInfo: { plateNumber: newAppointment.plateNumber, model: newAppointment.vehicleModel },
-                appointmentDate: new Date(newAppointment.date),
-                appointmentTime: newAppointment.time,
-                serviceType: newAppointment.serviceType as any,
-                notes: `CVDV: ${newAppointment.advisor}`
+                customerId: formData.customerId,
+                vehicleInfo: { plateNumber: formData.plateNumber, model: formData.vehicleModel },
+                appointmentDate: new Date(formData.date),
+                appointmentTime: formData.time,
+                serviceType: formData.serviceType as any,
+                notes: `CVDV: ${formData.advisor}`
             });
 
             if (result.success) {
                 toast.success(`Đã đặt lịch hẹn thành công!`);
                 setIsOpen(false);
                 loadData();
-                setNewAppointment({ customerId: '', phone: '', plateNumber: '', vehicleModel: '', date: '', time: '', serviceType: 'PERIODIC', advisor: '' });
-                setNewCustomerName('');
+                setFormData({ customerId: '', phone: '', plateNumber: '', vehicleModel: '', date: '', time: '', serviceType: 'PERIODIC', advisor: '' });
                 setSelectedVehicleModelId(null);
             } else {
                 toast.error(result.error);
@@ -125,22 +124,21 @@ export default function AppointmentList() {
                                 <div>
                                     <SmartSelect
                                         dataSource={customerDataSource}
-                                        value={newAppointment.customerId}
+                                        value={formData.customerId}
                                         onChange={(id, item) => {
-                                            setNewAppointment({ ...newAppointment, customerId: id as string, phone: item?.data?.phone || '' });
-                                            setNewCustomerName(item?.label || '');
+                                            setFormData({ ...formData, customerId: id as string, phone: item?.meta?.phone || '' });
                                         }}
                                         label="Khách hàng"
                                         placeholder="Chọn khách hàng..."
                                         required
                                         className="w-full"
                                     />
-                                    {newAppointment.customerId && <p className="text-xs text-green-600 mt-1">Đã chọn ID: {newAppointment.customerId}</p>}
+                                    {formData.customerId && <p className="text-xs text-green-600 mt-1">Đã chọn ID: {formData.customerId}</p>}
                                 </div>
                             </div>
                             <div className="space-y-2">
                                 <Label>Số điện thoại</Label>
-                                <Input value={newAppointment.phone} disabled className="bg-gray-100" />
+                                <Input value={formData.phone} disabled className="bg-gray-100" />
                             </div>
                             <div className="space-y-2">
                                 <Label>Biển số xe <span className="text-red-500">(*)</span></Label>
