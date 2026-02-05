@@ -55,12 +55,28 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
-    if (!body.full_name) {
-      return NextResponse.json(
-        { error: 'full_name is required' },
-        { status: 400 }
-      )
-    }
+     if (!body.full_name) {
+       return NextResponse.json(
+         { error: 'full_name is required' },
+         { status: 400 }
+       )
+     }
+
+     if (body.full_name && body.full_name.length > 200) {
+       return NextResponse.json(
+         { error: 'full_name must be less than 200 characters' },
+         { status: 400 }
+       )
+     }
+
+     if (body.email) {
+       if (body.email.length > 200) {
+         return NextResponse.json(
+           { error: 'email must be less than 200 characters' },
+           { status: 400 }
+         )
+       }
+     }
 
     if (body.employee_code) {
       const existingByCode = await prisma.employees.findFirst({
@@ -88,18 +104,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const employee = await prisma.employees.create({
-      data: {
-        employee_code: body.employee_code || `EMP${Date.now()}`,
-        full_name: body.full_name,
-        department_id: body.department_id,
-        position_id: body.position_id,
-        level_id: body.level_id,
-        join_date: body.join_date ? new Date(body.join_date) : null,
-        status: body.status || 'ACTIVE',
-        user_id: body.user_id
-      }
-    })
+     const employee = await prisma.employees.create({
+       data: {
+         employee_code: body.employee_code || `EMP${Date.now()}`,
+         full_name: body.full_name,
+         email: body.email || null,
+         department_id: body.department_id,
+         position_id: body.position_id,
+         level_id: body.level_id,
+         join_date: body.join_date ? new Date(body.join_date) : null,
+         status: body.status || 'ACTIVE',
+         user_id: body.user_id
+       }
+     })
 
     return NextResponse.json(employee, { status: 201 })
   } catch (error: any) {
