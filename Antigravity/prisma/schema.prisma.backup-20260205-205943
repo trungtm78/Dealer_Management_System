@@ -17,10 +17,6 @@ model ActivityLog {
   ip_address String?
   created_at DateTime @default(now())
   User       User     @relation(fields: [user_id], references: [id])
-
-  @@index([user_id, created_at])
-  @@index([entity, entity_id])
-  @@index([created_at])
 }
 
 model Complaint {
@@ -61,10 +57,6 @@ model Contract {
   Deposit          Deposit[]
   PDSChecklist     PDSChecklist[]
   Vin              Vin?
-
-  @@index([customer_id, created_at])
-  @@index([status])
-  @@index([created_at])
 }
 
 model Customer {
@@ -109,11 +101,6 @@ model Customer {
   @@index([tier])
   @@index([phone])
   @@index([name])
-  @@index([email])
-  @@index([mobile])
-  @@index([vat])
-  @@index([created_at])
-  @@index([member_since])
 }
 
 model Deposit {
@@ -204,12 +191,7 @@ model InsuranceContract {
   updated_at        DateTime         @default(now())
   InsuranceClaim    InsuranceClaim[]
   Customer          Customer         @relation(fields: [customer_id], references: [id])
-  User               User             @relation(fields: [created_by_id], references: [id])
-
-  @@index([customer_id, start_date])
-  @@index([status, end_date])
-  @@index([start_date])
-  @@index([insurance_company])
+  User              User             @relation(fields: [created_by_id], references: [id])
 }
 
 model Interaction {
@@ -225,10 +207,6 @@ model Interaction {
   Lead        Lead?     @relation(fields: [lead_id], references: [id])
   Customer    Customer? @relation(fields: [customer_id], references: [id])
   User        User      @relation(fields: [user_id], references: [id])
-
-  @@index([customer_id, created_at])
-  @@index([type, created_at])
-  @@index([created_at])
 }
 
 model Invoice {
@@ -254,10 +232,6 @@ model Invoice {
 
   @@index([status])
   @@index([invoice_number])
-  @@index([customer_id, invoice_date])
-  @@index([status, invoice_date])
-  @@index([invoice_date])
-  @@index([due_date])
 }
 
 model Lead {
@@ -287,11 +261,6 @@ model Lead {
   @@index([assigned_to_id])
   @@index([status])
   @@index([phone])
-  @@index([email])
-  @@index([source])
-  @@index([score])
-  @@index([created_at])
-  @@index([status, score])
 }
 
 model LeadHistory {
@@ -315,9 +284,6 @@ model LoyaltyTransaction {
   reference_id String?
   created_at   DateTime @default(now())
   Customer     Customer @relation(fields: [customer_id], references: [id])
-
-  @@index([customer_id, created_at])
-  @@index([created_at])
 }
 
 model MarketingCampaign {
@@ -398,8 +364,6 @@ model Part {
   @@index([category])
   @@index([part_number])
   @@index([name])
-  @@index([status])
-  @@index([supplier_id])
 }
 
 model PartVehicleCompatibility {
@@ -456,10 +420,6 @@ model PurchaseOrder {
   POLineItem             POLineItem[]
   Supplier               Supplier     @relation(fields: [supplier_id], references: [id])
   User                   User         @relation(fields: [created_by_id], references: [id])
-
-  @@index([supplier_id, order_date])
-  @@index([status, order_date])
-  @@index([order_date])
 }
 
 model QCChecklist {
@@ -513,10 +473,6 @@ model Quotation {
 
   @@index([status])
   @@index([quote_number])
-  @@index([customer_id, created_at])
-  @@index([status, created_at])
-  @@index([created_at])
-  @@index([created_by_id])
 }
 
 model ROLineItem {
@@ -574,10 +530,6 @@ model RepairOrder {
 
   @@index([status])
   @@index([ro_number])
-  @@index([customer_id, created_at])
-  @@index([status, created_at])
-  @@index([bay_number])
-  @@index([created_at])
 }
 
 model Role {
@@ -617,11 +569,6 @@ model ServiceAppointment {
   RepairOrder    RepairOrder[]
   Customer       Customer      @relation(fields: [customer_id], references: [id])
   User           User          @relation(fields: [advisor_id], references: [id])
-
-  @@index([customer_id, scheduled_date])
-  @@index([status, scheduled_date])
-  @@index([advisor_id, scheduled_date])
-  @@index([scheduled_date])
 }
 
 model ServiceQuote {
@@ -660,8 +607,7 @@ model StockMovement {
   User           User     @relation(fields: [user_id], references: [id])
 
   @@index([created_at])
-  @@index([part_id, created_at])
-  @@index([type, created_at])
+  @@index([part_id])
 }
 
 model StockTake {
@@ -748,9 +694,6 @@ model TestDrive {
   updated_at          DateTime @default(now())
   Customer            Customer @relation(fields: [customer_id], references: [id])
   User                User     @relation(fields: [sales_consultant_id], references: [id])
-
-  @@index([customer_id, scheduled_date])
-  @@index([status, scheduled_date])
 }
 
 model Transaction {
