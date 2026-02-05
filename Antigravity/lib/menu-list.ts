@@ -425,19 +425,43 @@ export const menuGroups: MenuGroup[] = [
             },
         ],
     },
-    {
-        title: "Master Data",
-        icon: Database,
-        subGroups: [
-            {
-                title: "Nhân Sự",
-                items: [
-                    {
-                        id: "employee-management",
-                        label: "Nhân Viên",
-                        icon: Users,
-                        href: "/master-data/employees"
-                    },
+     {
+         title: "Master Data",
+         icon: Database,
+         subGroups: [
+             {
+                 title: "Nhân Sự",
+                 items: [
+                     {
+                         id: "employee-management",
+                         label: "Nhân Viên",
+                         icon: Users,
+                         href: "/master-data/employees"
+                     },
+                 ]
+             },
+         ],
+         items: [
+             {
+                 id: "departments",
+                 label: "Departments",
+                 icon: Users,
+                 href: "/master-data/departments"
+             },
+             {
+                 id: "positions",
+                 label: "Positions",
+                 icon: Users,
+                 href: "/master-data/positions"
+             },
+             {
+                 id: "levels",
+                 label: "Levels",
+                 icon: Users,
+                 href: "/master-data/levels"
+             },
+         ],
+     },
                 ]
             },
             {

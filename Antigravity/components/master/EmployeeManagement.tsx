@@ -7,35 +7,35 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { SmartSelect } from "@/components/SmartSelect";
-import type { SelectDataSource } from "@/types/smart-select";
+import type { SelectDataSource, SelectItem } from "@/types/smart-select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Edit, Trash2, Search, Filter, Phone, Mail, MapPin } from "lucide-react"
+import { Plus, Edit, Trash2, Search, Filter, Phone, Mail, MapPin, User, UserPlus } from "lucide-react"
 import { toast } from "sonner"
 
 interface Employee {
   id: string
   employee_code: string
-  first_name: string
-  last_name: string
-  email: string
-  phone: string
-  department_id: string
+  full_name: string
+  email: string | null
+  phone: string | null
+  department_id: string | null
   department_name?: string
-  position_id: string
+  position_id: string | null
   position_name?: string
-  level_id: string
+  level_id: string | null
   level_name?: string
   status: string
-  join_date: string
+  join_date: string | null
   created_at: string
   updated_at: string
+  user_id?: string | null
+  user_email?: string | null
 }
 
 interface EmployeeFormData {
-  first_name: string
-  last_name: string
+  full_name: string
   email: string
   phone: string
   department_id: string
@@ -43,6 +43,30 @@ interface EmployeeFormData {
   level_id: string
   status: string
   join_date: string
+  user_id: string | null
+}
+
+interface UserFormData {
+  email: string
+  password: string
+  role_id: string
+}
+
+const STATUS_OPTIONS = [
+  { value: "ACTIVE", label: "Active" },
+  { value: "INACTIVE", label: "Inactive" },
+  { value: "ON_LEAVE", label: "On Leave" },
+  { value: "TERMINATED", label: "Terminated" }
+]
+
+const POSITION_ROLE_MAPPING: Record<string, string[]> = {
+  "Sales Manager": ["SALES_MANAGER", "SALES_STAFF"],
+  "Service Advisor": ["SERVICE_ADVISOR", "SERVICE_STAFF"],
+  "Technician": ["TECHNICIAN"],
+  "Admin Staff": ["ADMIN"],
+  "Warehouse Manager": ["WAREHOUSE_MANAGER", "WAREHOUSE_STAFF"],
+  "Accountant": ["ACCOUNTANT"],
+  "HR Manager": ["HR_MANAGER", "ADMIN"]
 }
 
 export function EmployeeManagement() {
@@ -54,56 +78,24 @@ export function EmployeeManagement() {
   const [selectedLevel, setSelectedLevel] = useState("")
   const [selectedStatus, setSelectedStatus] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isCreateUserDialogOpen, setIsCreateUserDialogOpen] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
   const [formData, setFormData] = useState<EmployeeFormData>({
-    first_name: "",
-    last_name: "",
+    full_name: "",
     email: "",
     phone: "",
     department_id: "",
     position_id: "",
     level_id: "",
     status: "ACTIVE",
-    join_date: ""
+    join_date: "",
+    user_id: null
   })
-  const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | null>(null)
-  const [selectedPositionId, setSelectedPositionId] = useState<number | null>(null)
-  const [selectedLevelId, setSelectedLevelId] = useState<number | null>(null)
-
-  // Mock data for departments, positions, levels
-  const departments = [
-    { id: "1", name: "Sales" },
-    { id: "2", name: "Service" },
-    { id: "3", name: "Parts" },
-    { id: "4", name: "Admin" },
-    { id: "5", name: "Finance" },
-    { id: "6", name: "Management" }
-  ]
-
-  const positions = [
-    { id: "1", name: "Staff" },
-    { id: "2", name: "Senior Staff" },
-    { id: "3", name: "Supervisor" },
-    { id: "4", name: "Manager" },
-    { id: "5", name: "Director" },
-    { id: "6", name: "Executive" }
-  ]
-
-  const levels = [
-    { id: "1", name: "Level 1" },
-    { id: "2", name: "Level 2" },
-    { id: "3", name: "Level 3" },
-    { id: "4", name: "Level 4" },
-    { id: "5", name: "Level 5" },
-    { id: "6", name: "Level 6" }
-  ]
-
-  const statuses = [
-    { value: "ACTIVE", label: "Active" },
-    { value: "INACTIVE", label: "Inactive" },
-    { value: "ON_LEAVE", label: "On Leave" },
-    { value: "TERMINATED", label: "Terminated" }
-  ]
+  const [userFormData, setUserFormData] = useState<UserFormData>({
+    email: "",
+    password: "",
+    role_id: ""
+  })
 
   const departmentDataSource: SelectDataSource = {
     search: async (req) => {
@@ -138,6 +130,46 @@ export function EmployeeManagement() {
     }
   };
 
+  const userDataSource: SelectDataSource = {
+    search: async (req) => {
+      const res = await fetch('/api/shared/search/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...req,
+          context: {
+            onlyActive: true,
+            excludeLinkedUsers: true
+          }
+        })
+      });
+      return res.json();
+    }
+  };
+
+  const roleDataSource: SelectDataSource = {
+    search: async (req) => {
+      const res = await fetch('/api/admin/roles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...req,
+          for_dropdown: true
+        })
+      });
+      const data = await res.json();
+      return {
+        items: data.data.map((role: any) => ({
+          id: role.id,
+          label: role.name,
+          subtitle: role.description || "",
+          meta: role
+        })),
+        nextCursor: null
+      };
+    }
+  };
+
   useEffect(() => {
     fetchEmployees()
   }, [])
@@ -167,6 +199,19 @@ export function EmployeeManagement() {
   }
 
   const handleCreateOrUpdate = async () => {
+    if (!formData.full_name || formData.full_name.trim().length === 0) {
+      toast.error("Full name is required")
+      return
+    }
+    if (formData.full_name.length > 200) {
+      toast.error("Full name must be less than 200 characters")
+      return
+    }
+    if (formData.email && formData.email.length > 200) {
+      toast.error("Email must be less than 200 characters")
+      return
+    }
+
     try {
       const url = editingEmployee ? `/api/master/employees/${editingEmployee.id}` : "/api/master/employees"
       const method = editingEmployee ? "PATCH" : "POST"
@@ -192,7 +237,7 @@ export function EmployeeManagement() {
   }
 
   const handleDelete = async (employee: Employee) => {
-    if (!confirm(`Are you sure you want to delete ${employee.first_name} ${employee.last_name}?`)) {
+    if (!confirm(`Are you sure you want to delete ${employee.full_name}?`)) {
       return
     }
 
@@ -215,15 +260,15 @@ export function EmployeeManagement() {
   const handleEdit = (employee: Employee) => {
     setEditingEmployee(employee)
     setFormData({
-      first_name: employee.first_name,
-      last_name: employee.last_name,
-      email: employee.email,
-      phone: employee.phone,
-      department_id: employee.department_id,
-      position_id: employee.position_id,
-      level_id: employee.level_id,
+      full_name: employee.full_name,
+      email: employee.email || "",
+      phone: employee.phone || "",
+      department_id: employee.department_id || "",
+      position_id: employee.position_id || "",
+      level_id: employee.level_id || "",
       status: employee.status,
-      join_date: employee.join_date.split('T')[0]
+      join_date: employee.join_date ? employee.join_date.split('T')[0] : "",
+      user_id: employee.user_id || null
     })
     setIsDialogOpen(true)
   }
@@ -231,23 +276,51 @@ export function EmployeeManagement() {
   const resetForm = () => {
     setEditingEmployee(null)
     setFormData({
-      first_name: "",
-      last_name: "",
+      full_name: "",
       email: "",
       phone: "",
       department_id: "",
       position_id: "",
       level_id: "",
       status: "ACTIVE",
-      join_date: ""
+      join_date: "",
+      user_id: null
     })
+  }
+
+  const handleCreateUser = async () => {
+    try {
+      if (!userFormData.email || !userFormData.password || !userFormData.role_id) {
+        toast.error("Email, password and role are required")
+        return
+      }
+
+      const response = await fetch(`/api/master/employees/${editingEmployee!.id}/create-user`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userFormData)
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        toast.success("User account created and linked successfully")
+        setFormData({ ...formData, user_id: data.user.id })
+        setIsCreateUserDialogOpen(false)
+        fetchEmployees()
+      } else {
+        const error = await response.json()
+        toast.error(error.message || "Failed to create user")
+      }
+    } catch (error) {
+      toast.error("Error creating user")
+    }
   }
 
   const filteredEmployees = employees.filter(employee => {
     const searchMatch = searchTerm === "" ||
-      `${employee.first_name} ${employee.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       employee.employee_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.email.toLowerCase().includes(searchTerm.toLowerCase())
+      (employee.email && employee.email.toLowerCase().includes(searchTerm.toLowerCase()))
 
     const departmentMatch = selectedDepartment === "" || employee.department_id === selectedDepartment
     const positionMatch = selectedPosition === "" || employee.position_id === selectedPosition
@@ -267,6 +340,10 @@ export function EmployeeManagement() {
     }
   }
 
+  const suggestedRoles = editingEmployee?.position_name
+    ? POSITION_ROLE_MAPPING[editingEmployee.position_name] || []
+    : []
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -278,123 +355,233 @@ export function EmployeeManagement() {
               Add Employee
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-3xl">
             <DialogHeader>
               <DialogTitle>{editingEmployee ? "Edit Employee" : "Add New Employee"}</DialogTitle>
             </DialogHeader>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="first_name">First Name</Label>
-                <Input
-                  id="first_name"
-                  value={formData.first_name}
-                  onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                />
+            <div className="space-y-4 max-h-[80vh] overflow-y-auto">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <Label htmlFor="full_name">Full Name *</Label>
+                  <Input
+                    id="full_name"
+                    value={formData.full_name}
+                    onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                    placeholder="Nguyễn Văn A"
+                    required
+                    maxLength={200}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="email">Email (Optional)</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="employee@honda.com"
+                    maxLength={200}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="phone">Phone</Label>
+                  <Input
+                    id="phone"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    placeholder="0901234567"
+                  />
+                </div>
+
+                <div>
+                  <SmartSelect
+                    dataSource={departmentDataSource}
+                    value={formData.department_id}
+                    onChange={(id) => setFormData({ ...formData, department_id: id as string })}
+                    label="Phòng ban"
+                    placeholder="Chọn phòng ban..."
+                    allowClear={true}
+                    context={{ onlyActive: true }}
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <SmartSelect
+                    dataSource={positionDataSource}
+                    value={formData.position_id}
+                    onChange={(id) => setFormData({ ...formData, position_id: id as string })}
+                    label="Vị trí"
+                    placeholder="Chọn vị trí..."
+                    allowClear={true}
+                    context={{ onlyActive: true }}
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <SmartSelect
+                    dataSource={levelDataSource}
+                    value={formData.level_id}
+                    onChange={(id) => setFormData({ ...formData, level_id: id as string })}
+                    label="Cấp bậc"
+                    placeholder="Chọn cấp bậc..."
+                    allowClear={true}
+                    context={{ onlyActive: true }}
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="status">Status</Label>
+                  <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STATUS_OPTIONS.map((status) => (
+                        <SelectItem key={status.value} value={status.value}>{status.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="col-span-2">
+                  <Label htmlFor="join_date">Join Date</Label>
+                  <Input
+                    id="join_date"
+                    type="date"
+                    value={formData.join_date}
+                    onChange={(e) => setFormData({ ...formData, join_date: e.target.value })}
+                  />
+                </div>
               </div>
-              <div>
-                <Label htmlFor="last_name">Last Name</Label>
-                <Input
-                  id="last_name"
-                  value={formData.last_name}
-                  onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                />
+
+              <div className="col-span-2 border-t pt-4 mt-4">
+                <h3 className="text-lg font-semibold mb-4">User Account</h3>
+
+                <div>
+                  <SmartSelect
+                    dataSource={userDataSource}
+                    value={formData.user_id}
+                    onChange={(id) => setFormData({ ...formData, user_id: id as string })}
+                    label="Link to User Account (Optional)"
+                    placeholder="Select user account..."
+                    allowClear={true}
+                    context={{ onlyActive: true, excludeLinkedUsers: true }}
+                  />
+                </div>
+
+                <div className="mt-2">
+                  <Button
+                    onClick={() => setIsCreateUserDialogOpen(true)}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Create User Account
+                  </Button>
+                </div>
+
+                {formData.user_id && editingEmployee?.user_email && (
+                  <div className="mt-2 p-2 bg-blue-50 rounded">
+                    <p className="text-sm">
+                      <User className="w-3 h-3 inline mr-1" />
+                      Linked to: <strong>{editingEmployee.user_email}</strong>
+                    </p>
+                  </div>
+                )}
               </div>
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                />
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button onClick={handleCreateOrUpdate}>
+                  {editingEmployee ? "Update" : "Create"}
+                </Button>
               </div>
-              <div>
-                <Label htmlFor="phone">Phone</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                />
-              </div>
-              <div>
-                <SmartSelect
-                  dataSource={departmentDataSource}
-                  value={selectedDepartmentId}
-                  onChange={(id, item) => {
-                    setSelectedDepartmentId(id as number | null);
-                    setFormData({ ...formData, department_id: id ? String(id) : "" });
-                  }}
-                  label="Phòng ban"
-                  placeholder="Chọn phòng ban..."
-                  required={false}
-                  context={{ onlyActive: true }}
-                  className="w-full"
-                />
-              </div>
-              <div>
-                <SmartSelect
-                  dataSource={positionDataSource}
-                  value={selectedPositionId}
-                  onChange={(id, item) => {
-                    setSelectedPositionId(id as number | null);
-                    setFormData({ ...formData, position_id: id ? String(id) : "" });
-                  }}
-                  label="Vị trí"
-                  placeholder="Chọn vị trí..."
-                  required={false}
-                  context={{ onlyActive: true }}
-                  className="w-full"
-                />
-              </div>
-              <div>
-                <SmartSelect
-                  dataSource={levelDataSource}
-                  value={selectedLevelId}
-                  onChange={(id, item) => {
-                    setSelectedLevelId(id as number | null);
-                    setFormData({ ...formData, level_id: id ? String(id) : "" });
-                  }}
-                  label="Cấp bậc"
-                  placeholder="Chọn cấp bậc..."
-                  required={false}
-                  context={{ onlyActive: true }}
-                  className="w-full"
-                />
-              </div>
-              <div>
-                <Label htmlFor="status">Status</Label>
-                <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {statuses.map((status) => (
-                      <SelectItem key={status.value} value={status.value}>{status.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="col-span-2">
-                <Label htmlFor="join_date">Join Date</Label>
-                <Input
-                  id="join_date"
-                  type="date"
-                  value={formData.join_date}
-                  onChange={(e) => setFormData({ ...formData, join_date: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 mt-4">
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleCreateOrUpdate}>
-                {editingEmployee ? "Update" : "Create"}
-              </Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
+
+      <Dialog open={isCreateUserDialogOpen} onOpenChange={setIsCreateUserDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create User Account for {editingEmployee?.full_name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="user_email">Email *</Label>
+              <Input
+                id="user_email"
+                type="email"
+                value={userFormData.email || editingEmployee?.email || ""}
+                onChange={(e) => setUserFormData({ ...userFormData, email: e.target.value })}
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="password">Password *</Label>
+              <Input
+                id="password"
+                type="password"
+                value={userFormData.password}
+                onChange={(e) => setUserFormData({ ...userFormData, password: e.target.value })}
+                required
+                minLength={8}
+                placeholder="Min 8 chars, uppercase, lowercase, number"
+              />
+            </div>
+
+            {suggestedRoles.length > 0 && (
+              <div className="p-3 bg-blue-50 rounded">
+                <p className="text-sm font-medium mb-2">
+                  Suggested roles for "{editingEmployee?.position_name}":
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {suggestedRoles.map((role) => (
+                    <Badge key={role} className="bg-blue-100 text-blue-800">
+                      {role}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <Label>Role *</Label>
+              <SmartSelect
+                dataSource={roleDataSource}
+                value={userFormData.role_id}
+                onChange={(id) => setUserFormData({ ...userFormData, role_id: id as string })}
+                placeholder="Select role..."
+                required
+                context={{ suggestedFirst: true }}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setIsCreateUserDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleCreateUser}>
+                Create User Account
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardHeader>
@@ -414,46 +601,43 @@ export function EmployeeManagement() {
                 className="pl-10"
               />
             </div>
-            <Select value={selectedDepartment || "all"} onValueChange={(val) => setSelectedDepartment(val === "all" ? "" : val)}>
-              <SelectTrigger>
-                <SelectValue placeholder="All Departments" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Departments</SelectItem>
-                {departments.map((dept) => (
-                  <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={selectedPosition || "all"} onValueChange={(val) => setSelectedPosition(val === "all" ? "" : val)}>
-              <SelectTrigger>
-                <SelectValue placeholder="All Positions" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Positions</SelectItem>
-                {positions.map((pos) => (
-                  <SelectItem key={pos.id} value={pos.id}>{pos.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={selectedLevel || "all"} onValueChange={(val) => setSelectedLevel(val === "all" ? "" : val)}>
-              <SelectTrigger>
-                <SelectValue placeholder="All Levels" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Levels</SelectItem>
-                {levels.map((level) => (
-                  <SelectItem key={level.id} value={level.id}>{level.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SmartSelect
+              dataSource={departmentDataSource}
+              value={selectedDepartment}
+              onChange={(id) => setSelectedDepartment(id as string)}
+              label="Department"
+              placeholder="All Departments"
+              allowClear={true}
+              context={{ onlyActive: true }}
+              className="w-full"
+            />
+            <SmartSelect
+              dataSource={positionDataSource}
+              value={selectedPosition}
+              onChange={(id) => setSelectedPosition(id as string)}
+              label="Position"
+              placeholder="All Positions"
+              allowClear={true}
+              context={{ onlyActive: true }}
+              className="w-full"
+            />
+            <SmartSelect
+              dataSource={levelDataSource}
+              value={selectedLevel}
+              onChange={(id) => setSelectedLevel(id as string)}
+              label="Level"
+              placeholder="All Levels"
+              allowClear={true}
+              context={{ onlyActive: true }}
+              className="w-full"
+            />
             <Select value={selectedStatus || "all"} onValueChange={(val) => setSelectedStatus(val === "all" ? "" : val)}>
               <SelectTrigger>
                 <SelectValue placeholder="All Statuses" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
-                {statuses.map((status) => (
+                {STATUS_OPTIONS.map((status) => (
                   <SelectItem key={status.value} value={status.value}>{status.label}</SelectItem>
                 ))}
               </SelectContent>
@@ -474,49 +658,68 @@ export function EmployeeManagement() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Code</TableHead>
-                  <TableHead>Name</TableHead>
+                  <TableHead>Full Name</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Department</TableHead>
                   <TableHead>Position</TableHead>
                   <TableHead>Level</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>User</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredEmployees.map((employee) => (
-                  <TableRow key={employee.id}>
-                    <TableCell className="font-medium">{employee.employee_code}</TableCell>
-                    <TableCell>{employee.first_name} {employee.last_name}</TableCell>
-                    <TableCell>{employee.email}</TableCell>
-                    <TableCell>{employee.department_name || employee.department_id}</TableCell>
-                    <TableCell>{employee.position_name || employee.position_id}</TableCell>
-                    <TableCell>{employee.level_name || employee.level_id}</TableCell>
-                    <TableCell>
-                      <Badge className={getStatusColor(employee.status)}>
-                        {employee.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(employee)}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDelete(employee)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
+                {filteredEmployees.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={10} className="text-center py-8">
+                      No employees found
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  filteredEmployees.map((employee) => (
+                    <TableRow key={employee.id}>
+                      <TableCell className="font-medium">{employee.employee_code}</TableCell>
+                      <TableCell>{employee.full_name}</TableCell>
+                      <TableCell>{employee.email || "-"}</TableCell>
+                      <TableCell>{employee.department_name || employee.department_id || "-"}</TableCell>
+                      <TableCell>{employee.position_name || employee.position_id || "-"}</TableCell>
+                      <TableCell>{employee.level_name || employee.level_id || "-"}</TableCell>
+                      <TableCell>
+                        <Badge className={getStatusColor(employee.status)}>
+                          {employee.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {employee.user_id ? (
+                          <Badge className="bg-blue-100 text-blue-800">
+                            <User className="w-3 h-3 mr-1" />
+                            {employee.user_email || "Linked"}
+                          </Badge>
+                        ) : (
+                          <span className="text-gray-400 text-sm">No user</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(employee)}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDelete(employee)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           )}

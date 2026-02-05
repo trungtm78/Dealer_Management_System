@@ -3,6 +3,12 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { MapPin, Plus, Edit, Trash2, Save, X, Search } from 'lucide-react';
+import { SmartSelect } from "@/components/SmartSelect";
+import type { SelectDataSource } from "@/types/smart-select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
 
 interface Warehouse {
   id: string;
@@ -11,8 +17,9 @@ interface Warehouse {
   address: string;
   phone: string;
   email: string;
-  manager_id: string;
+  manager_id: string | null;
   manager_name?: string;
+  manager_email?: string;
   status: string;
   capacity: number;
   current_stock: number;
@@ -53,14 +60,22 @@ export function WarehouseManagement() {
     { value: "MAINTENANCE", label: "Bảo trì" }
   ];
 
-  const managers = [
-    { id: "1", name: "Nguyễn Văn A" },
-    { id: "2", name: "Trần Thị B" },
-    { id: "3", name: "Lê Văn C" },
-    { id: "4", name: "Phạm Thị D" },
-    { id: "5", name: "Hoàng Văn E" },
-    { id: "6", name: "Ngô Thị F" }
-  ];
+  const employeeDataSource: SelectDataSource = {
+    search: async (req) => {
+      const res = await fetch('/api/shared/search/employees', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...req,
+          context: {
+            onlyActive: true,
+            positionFilter: ["Manager", "Supervisor", "Director"]
+          }
+        })
+      });
+      return res.json();
+    }
+  };
 
   useEffect(() => {
     fetchWarehouses();
@@ -80,6 +95,7 @@ export function WarehouseManagement() {
       }
     } catch (error) {
       console.error("Error fetching warehouses:", error);
+      toast.error("Failed to fetch warehouses");
     } finally {
       setLoading(false);
     }
@@ -94,19 +110,20 @@ export function WarehouseManagement() {
 
       const response = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
 
       if (response.ok) {
+        toast.success(editingWarehouse ? "Warehouse updated successfully" : "Warehouse created successfully");
         fetchWarehouses();
         resetForm();
       } else {
         const error = await response.json();
-        alert(error.error || "Thao tác thất bại");
+        toast.error(error.error || "Operation failed");
       }
     } catch (error) {
-      alert("Lỗi khi lưu kho");
+      toast.error("Error saving warehouse");
     }
   };
 
@@ -121,12 +138,13 @@ export function WarehouseManagement() {
       });
 
       if (response.ok) {
+        toast.success("Warehouse deleted successfully");
         fetchWarehouses();
       } else {
-        alert("Xóa thất bại");
+        toast.error("Failed to delete warehouse");
       }
     } catch (error) {
-      alert("Lỗi khi xóa kho");
+      toast.error("Error deleting warehouse");
     }
   };
 
@@ -137,7 +155,7 @@ export function WarehouseManagement() {
       address: warehouse.address,
       phone: warehouse.phone,
       email: warehouse.email,
-      manager_id: warehouse.manager_id,
+      manager_id: warehouse.manager_id || "",
       status: warehouse.status,
       capacity: warehouse.capacity
     });
@@ -204,115 +222,126 @@ export function WarehouseManagement() {
         </Button>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Tìm kiếm kho hàng..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#E60012]"
-            />
+      <Card className="mb-6">
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Tìm kiếm kho hàng..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#E60012]"
+              />
+            </div>
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#E60012]"
+            >
+              <option value="">Tất cả trạng thái</option>
+              {statuses.map((status) => (
+                <option key={status.value} value={status.value}>{status.label}</option>
+              ))}
+            </select>
           </div>
-          <select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#E60012]"
-          >
-            <option value="">Tất cả trạng thái</option>
-            {statuses.map((status) => (
-              <option key={status.value} value={status.value}>{status.label}</option>
-            ))}
-          </select>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="text-left py-3 px-4 font-semibold text-gray-900">Mã</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-900">Tên</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-900">Địa Chỉ</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-900">Quản Lý</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-900">Sức Chứa</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-900">Trạng Thái</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-900">Thao Tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
                 <tr>
-                  <td colSpan={7} className="text-center py-8 text-gray-500">Đang tải...</td>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-900">Mã</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-900">Tên</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-900">Địa Chỉ</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-900">Quản Lý</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-900">Sức Chứa</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-900">Trạng Thái</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-900">Thao Tác</th>
                 </tr>
-              ) : filteredWarehouses.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="text-center py-8 text-gray-500">Không có dữ liệu</td>
-                </tr>
-              ) : (
-                filteredWarehouses.map((warehouse) => (
-                  <tr key={warehouse.id} className="border-t border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-4 font-medium">{warehouse.warehouse_code}</td>
-                    <td className="py-3 px-4">
-                      <div>
-                        <div className="font-medium">{warehouse.name}</div>
-                        <div className="text-sm text-gray-500">
-                          {warehouse.email} | {warehouse.phone}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-1 text-sm text-gray-600">
-                        <MapPin className="w-3 h-3" />
-                        {warehouse.address}
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      {warehouse.manager_name || warehouse.manager_id}
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="space-y-1">
-                        <div className="text-sm font-medium">
-                          {warehouse.current_stock} / {warehouse.capacity} đơn vị
-                        </div>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCapacityColor(warehouse.current_stock, warehouse.capacity)}`}>
-                          {Math.round((warehouse.current_stock / warehouse.capacity) * 100)}%
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(warehouse.status)}`}>
-                        {warehouse.status === "ACTIVE" ? "Hoạt động" : warehouse.status === "MAINTENANCE" ? "Bảo trì" : "Ngưng hoạt động"}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleEdit(warehouse)}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleDelete(warehouse)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </td>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} className="text-center py-8 text-gray-500">Đang tải...</td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                ) : filteredWarehouses.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="text-center py-8 text-gray-500">Không có dữ liệu</td>
+                  </tr>
+                ) : (
+                  filteredWarehouses.map((warehouse) => (
+                    <tr key={warehouse.id} className="border-t border-gray-100 hover:bg-gray-50">
+                      <td className="py-3 px-4 font-medium">{warehouse.warehouse_code}</td>
+                      <td className="py-3 px-4">
+                        <div>
+                          <div className="font-medium">{warehouse.name}</div>
+                          <div className="text-sm text-gray-500">
+                            {warehouse.email} | {warehouse.phone}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-1 text-sm text-gray-600">
+                          <MapPin className="w-3 h-3" />
+                          {warehouse.address}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div>
+                          {warehouse.manager_name || "-"}
+                          {warehouse.manager_email && (
+                            <div className="text-sm text-gray-500">
+                              ({warehouse.manager_email})
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="space-y-1">
+                          <div className="text-sm font-medium">
+                            {warehouse.current_stock} / {warehouse.capacity} đơn vị
+                          </div>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCapacityColor(warehouse.current_stock, warehouse.capacity)}`}>
+                            {Math.round((warehouse.current_stock / warehouse.capacity) * 100)}%
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(warehouse.status)}`}>
+                          {warehouse.status === "ACTIVE" ? "Hoạt động" : warehouse.status === "MAINTENANCE" ? "Bảo trì" : "Ngưng hoạt động"}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleEdit(warehouse)}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDelete(warehouse)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -355,7 +384,7 @@ export function WarehouseManagement() {
                       placeholder="Địa chỉ đầy đủ"
                     />
                   </div>
-                  <div>
+                  <div className="col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Điện Thoại <span className="text-red-500">*</span>
                     </label>
@@ -368,7 +397,7 @@ export function WarehouseManagement() {
                       placeholder="Số điện thoại"
                     />
                   </div>
-                  <div>
+                  <div className="col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Email <span className="text-red-500">*</span>
                     </label>
@@ -381,23 +410,21 @@ export function WarehouseManagement() {
                       placeholder="kho@example.com"
                     />
                   </div>
-                  <div>
+                  <div className="col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Quản Lý <span className="text-red-500">*</span>
                     </label>
-                    <select
+                    <SmartSelect
+                      dataSource={employeeDataSource}
                       value={formData.manager_id}
-                      onChange={(e) => setFormData({ ...formData, manager_id: e.target.value })}
+                      onChange={(id) => setFormData({ ...formData, manager_id: id ? String(id) : "" })}
+                      label="Quản Lý"
+                      placeholder="Chọn quản lý..."
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#E60012]"
-                    >
-                      <option value="">Chọn quản lý</option>
-                      {managers.map((manager) => (
-                        <option key={manager.id} value={manager.id}>{manager.name}</option>
-                      ))}
-                    </select>
+                      className="w-full"
+                    />
                   </div>
-                  <div>
+                  <div className="col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Sức Chứa (đơn vị) <span className="text-red-500">*</span>
                     </label>
