@@ -235,11 +235,17 @@ export function AutocompleteFK({
                             ) : (
                                 <CommandGroup>
                                     {allItems.map((item) => (
-                                        <CommandItem
+                                        <div
                                             key={item.id}
-                                            value={String(item.id)}
-                                            onSelect={() => handleSelect(item)}
+                                            onClick={() => handleSelect(item)}
+                                            onPointerDown={() => handleSelect(item)}
+                                            style={{ cursor: 'pointer' }}
                                         >
+                                            <CommandItem
+                                                value={String(item.id)}
+                                                onSelect={() => handleSelect(item)}
+                                                className="!cursor-pointer"
+                                            >
                                             <Check
                                                 className={cn(
                                                     "mr-2 h-4 w-4",
@@ -255,6 +261,7 @@ export function AutocompleteFK({
                                                 )}
                                             </div>
                                         </CommandItem>
+                                    </div>
                                     ))}
                                 </CommandGroup>
                             )}
@@ -265,11 +272,16 @@ export function AutocompleteFK({
                                 </div>
                             )}
                             {canCreate && !isFetching && allItems.length === 0 && debouncedSearchQuery && (
-                                <CommandItem
-                                    value="create-new"
-                                    onSelect={handleQuickCreate}
-                                    className="text-blue-600"
+                                <div
+                                    onClick={handleQuickCreate}
+                                    onPointerDown={handleQuickCreate}
+                                    style={{ cursor: 'pointer' }}
                                 >
+                                    <CommandItem
+                                        value="create-new"
+                                        onSelect={handleQuickCreate}
+                                        className="text-blue-600 !cursor-pointer"
+                                    >
                                     <Plus className="mr-2 h-4 w-4" />
                                     <div className="flex flex-col flex-1">
                                         <span className="font-medium">Tạo mới</span>
@@ -278,6 +290,7 @@ export function AutocompleteFK({
                                         </span>
                                     </div>
                                 </CommandItem>
+                            </div>
                             )}
                         </CommandList>
                     </Command>

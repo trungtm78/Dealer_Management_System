@@ -231,6 +231,7 @@ export function SmartSelect({
                                         <CommandGroup>
                                             <CommandItem
                                                 onSelect={handleCreate}
+                                                onClick={handleCreate}
                                                 className="cursor-pointer"
                                             >
                                                 <Plus className="mr-2 h-4 w-4" />
@@ -247,35 +248,48 @@ export function SmartSelect({
                                 ) : (
                                     <CommandGroup>
                                         {items.map((item) => (
-                                            <CommandItem
+                                            <div
                                                 key={item.id}
-                                                value={String(item.id)}
-                                                onSelect={() => handleSelect(item.id)}
+                                                onClick={() => handleSelect(item.id)}
+                                                onPointerDown={() => handleSelect(item.id)}
+                                                style={{ cursor: 'pointer' }}
                                             >
-                                                <Check
-                                                    className={cn(
-                                                        "mr-2 h-4 w-4",
-                                                        value === item.id ? "opacity-100" : "opacity-0"
-                                                    )}
-                                                />
-                                                <div className="flex flex-col">
-                                                    <span>{item.label}</span>
-                                                    {item.subtitle && (
-                                                        <span className="text-xs text-muted-foreground">
-                                                            {item.subtitle}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </CommandItem>
+                                                <CommandItem
+                                                    value={String(item.id)}
+                                                    onSelect={() => handleSelect(item.id)}
+                                                    className="!cursor-pointer"
+                                                >
+                                                    <Check
+                                                        className={cn(
+                                                            "mr-2 h-4 w-4",
+                                                            value === item.id ? "opacity-100" : "opacity-0"
+                                                        )}
+                                                    />
+                                                    <div className="flex flex-col">
+                                                        <span>{item.label}</span>
+                                                        {item.subtitle && (
+                                                            <span className="text-xs text-muted-foreground">
+                                                                {item.subtitle}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </CommandItem>
+                                            </div>
                                         ))}
                                         {showCreateOption && !exactMatch && (
-                                            <CommandItem
-                                                onSelect={handleCreate}
-                                                className="cursor-pointer mt-2"
+                                            <div
+                                                onClick={handleCreate}
+                                                onPointerDown={handleCreate}
+                                                style={{ cursor: 'pointer' }}
                                             >
-                                                <Plus className="mr-2 h-4 w-4" />
-                                                Tạo "{debouncedQuery}"
-                                            </CommandItem>
+                                                <CommandItem
+                                                    onSelect={handleCreate}
+                                                    className="!cursor-pointer mt-2"
+                                                >
+                                                    <Plus className="mr-2 h-4 w-4" />
+                                                    Tạo "{debouncedQuery}"
+                                                </CommandItem>
+                                            </div>
                                         )}
                                         {loading && nextCursor && (
                                             <div className="py-2 flex items-center justify-center">

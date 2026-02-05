@@ -157,26 +157,33 @@ export function SmartCustomerSelect({
 
                         <CommandGroup>
                             {items.map((item) => (
-                                <CommandItem
+                                <div
                                     key={item.id}
-                                    value={String(item.id)} // Value for internal Command management
-                                    onSelect={() => onSelect(item)}
+                                    onClick={() => onSelect(item)}
+                                    onPointerDown={() => onSelect(item)}
+                                    style={{ cursor: 'pointer' }}
                                 >
-                                    <Check
-                                        className={cn(
-                                            "mr-2 h-4 w-4",
-                                            value === item.id ? "opacity-100" : "opacity-0"
-                                        )}
-                                    />
-                                    <div className="flex flex-col overflow-hidden">
-                                        <span className="truncate font-medium">{item.label}</span>
-                                        {item.subtitle && (
-                                            <span className="truncate text-xs text-muted-foreground">
-                                                {item.subtitle}
-                                            </span>
-                                        )}
-                                    </div>
-                                </CommandItem>
+                                    <CommandItem
+                                        value={String(item.id)} // Value for internal Command management
+                                        onSelect={() => onSelect(item)}
+                                        className="!cursor-pointer"
+                                    >
+                                        <Check
+                                            className={cn(
+                                                "mr-2 h-4 w-4",
+                                                value === item.id ? "opacity-100" : "opacity-0"
+                                            )}
+                                        />
+                                        <div className="flex flex-col overflow-hidden">
+                                            <span className="truncate font-medium">{item.label}</span>
+                                            {item.subtitle && (
+                                                <span className="truncate text-xs text-muted-foreground">
+                                                    {item.subtitle}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </CommandItem>
+                                </div>
                             ))}
 
                             {/* Infinite scroll trigger element */}

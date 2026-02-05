@@ -99,15 +99,29 @@ export function CustomerSearch({ onSelect, placeholder = "Tìm khách hàng...",
                         ) : (
                             <CommandGroup heading="Kết quả tìm kiếm">
                                 {results.map((item) => (
-                                    <CommandItem
+                                    <div
                                         key={item.id}
-                                        value={item.id}
-                                        onSelect={(currentValue) => {
-                                            setValue(item.name); // Set visual value to Name
+                                        onClick={() => {
+                                            setValue(item.name);
                                             onSelect(item);
                                             setOpen(false);
                                         }}
+                                        onPointerDown={() => {
+                                            setValue(item.name);
+                                            onSelect(item);
+                                            setOpen(false);
+                                        }}
+                                        style={{ cursor: 'pointer' }}
                                     >
+                                        <CommandItem
+                                            value={item.id}
+                                            onSelect={(currentValue) => {
+                                                setValue(item.name); // Set visual value to Name
+                                                onSelect(item);
+                                                setOpen(false);
+                                            }}
+                                            className="!cursor-pointer"
+                                        >
                                         <Check
                                             className={cn(
                                                 "mr-2 h-4 w-4",
@@ -129,9 +143,10 @@ export function CustomerSearch({ onSelect, placeholder = "Tìm khách hàng...",
                                                 <span className="text-xs text-blue-600 truncate max-w-[300px]">
                                                     {item.address}
                                                 </span>
-                                            )}
-                                        </div>
-                                    </CommandItem>
+                                                )}
+                                            </div>
+                                        </CommandItem>
+                                    </div>
                                 ))}
                             </CommandGroup>
                         )}
